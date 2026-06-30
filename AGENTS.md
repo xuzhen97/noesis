@@ -1,4 +1,4 @@
-# Noesis Agent Instructions
+# Noesis Agent 指令
 
 ## 业务语言
 

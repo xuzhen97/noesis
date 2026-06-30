@@ -1,29 +1,29 @@
-# Noesis Domain Context
+# Noesis 领域术语表
 
-Noesis 灵识 is a personal Human-AI Symbiotic Workspace: one Gateway coordinates AI agents, remote machines, commands, files, Pi sessions, transfers, and audited automation.
+Noesis 灵识是一个人机共生工作台：一个 Gateway 协调 AI Agent、远程机器、命令、文件、Pi 会话、传输和审计的自动化。
 
-## Language
+## 术语
 
-**Noesis**:
-The product as a whole: a personal workspace that connects human intent, AI agents, and remote machines.
-_Avoid_: Agent gateway, remote control tool
+**Noesis**：
+产品整体名称。一个人机共生工作台，连接人类意图、AI Agent 和远程机器。
+_避免_：Agent gateway、remote control tool
 
-**Gateway**:
-The central control plane that owns API access, machine registry, task orchestration, audit, and coordination.
-_Avoid_: Server when discussing product role
+**Gateway**：
+中央控制面，负责 API 访问、Machine 注册、Task 编排、审计和协调。
+_避免_：在描述产品角色时使用 Server
 
-**Client Agent**:
-The resident process on a target machine that connects outward to the Gateway and performs local execution.
-_Avoid_: Worker daemon, remote shell
+**Client Agent**：
+运行在目标机器上的常驻进程，向外连接 Gateway 并在本地执行操作。
+_避免_：Worker daemon、remote shell
 
-**Machine**:
-A registered Windows, Linux, or macOS target represented by a Client Agent heartbeat and capabilities.
-_Avoid_: Host when the product resource is meant
+**Machine**：
+已注册的 Windows/Linux/macOS 目标，通过 Client Agent 的心跳和能力描述来体现。
+_避免_：当指产品资源时使用 Host
 
-**Task**:
-An observable execution unit created by the Gateway and dispatched to a Client Agent.
-_Avoid_: Job unless referring to external systems
+**Task**：
+由 Gateway 创建并派发给 Client Agent 的可观测执行单元。
+_避免_：除非指外部系统，否则不使用 Job
 
-**Task Event**:
-An append-only event for task logs, progress, stdout/stderr, lifecycle, and evidence.
-_Avoid_: Log line only
+**Task Event**：
+只追加不修改的事件流，用于 Task 的日志、进度、stdout/stderr、生命周期和证据。
+_避免_：仅指日志行
