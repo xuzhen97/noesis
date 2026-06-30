@@ -49,3 +49,17 @@
 - `packages/cli` 依赖 `sdk`。
 - `packages/web` 初始化阶段只依赖 `shared`，暂不依赖 `sdk`。
 - `packages/shared` 只放协议、通用类型、错误模型和 schema；不放 DB、Repository、Server helper、Client helper 或运行时业务逻辑。
+
+## Agent skills
+
+### Issue tracker
+
+本地 markdown — issues 存放在 `.scratch/<feature>/` 下。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+五个 canonical triage roles 使用默认名称。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+Single-context — 一个 `CONTEXT.md` + `docs/adr/`。详见 `docs/agents/domain.md`。
