@@ -1,69 +1,69 @@
-# Noesis Project Initialization Implementation Plan
+# Noesis 项目初始化实现计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供 Agent 工作者使用：** 必须使用子技能：使用 superpowers:subagent-driven-development（推荐）或 superpowers:executing-plans 来逐任务执行此计划。步骤使用复选框（`- [ ]`）语法进行追踪。
 
-**Goal:** Build a minimal, verifiable `noesis/` pnpm TypeScript monorepo for the P0 Gateway / Client Agent / Machine / Task / Task Event control-loop skeleton.
+**目标：** 构建最小、可验证的 `noesis/` pnpm TypeScript 单体仓库，用于 P0 的 Gateway / Client Agent / Machine / Task / Task Event 控制闭环骨架。
 
-**Architecture:** One workspace root owns scripts and governance. Six packages keep one-way dependencies: `shared` is the protocol base, `server`, `client`, `sdk`, and `web` consume `shared`, and `cli` consumes `sdk`. The code intentionally exposes only smoke-testable entrypoints and avoids future capability directories.
+**架构：** 一个工作区根目录拥有脚本和治理规则。六个包保持单向依赖：`shared` 是协议基础，`server`、`client`、`sdk` 和 `web` 消费 `shared`，`cli` 消费 `sdk`。代码有意只暴露可冒烟测试的入口点，避免创建未来能力的目录。
 
-**Tech Stack:** pnpm 10, TypeScript, Vitest, Vite, React 19, Node 24.
+**技术栈：** pnpm 10、TypeScript、Vitest、Vite、React 19、Node 24。
 
 ---
 
-## File Structure
+## 文件结构
 
-Create or modify these files only:
+仅创建或修改以下文件：
 
 ```text
 noesis/
-  package.json                         # root workspace scripts and dev deps
-  pnpm-workspace.yaml                  # packages/* workspace
-  tsconfig.base.json                   # shared TS compiler defaults
-  README.md                            # project entry and scope warning
-  scripts/check-boundaries.mjs         # final dependency/scope guard
+  package.json                         # 根工作区脚本和开发依赖
+  pnpm-workspace.yaml                  # packages/* 工作区
+  tsconfig.base.json                   # 共享 TS 编译器默认配置
+  README.md                            # 项目入口和范围警告
+  scripts/check-boundaries.mjs         # 最终依赖/范围守卫
   docs/superpowers/plans/2026-06-30-noesis-project-initialization.md
 
   packages/shared/
     package.json
     tsconfig.json
-    src/index.ts                       # public protocol exports
-    src/protocol.ts                    # Machine / Task / Task Event / health protocol
-    src/errors.ts                      # minimal error shape
-    src/protocol.test.ts               # smoke test
+    src/index.ts                       # 公开协议导出
+    src/protocol.ts                    # Machine / Task / Task Event / health 协议
+    src/errors.ts                      # 最小错误形状
+    src/protocol.test.ts               # 冒烟测试
 
   packages/server/
     package.json
     tsconfig.json
     src/index.ts
-    src/app.ts                         # Gateway app shape
-    src/health/index.ts                # health slice
-    src/machines/index.ts              # Machine slice marker shape
-    src/tasks/index.ts                 # Task slice marker shape
-    src/ws/index.ts                    # control channel marker shape
-    src/db/index.ts                    # persistence marker shape
-    src/server.test.ts                 # smoke test
+    src/app.ts                         # Gateway 应用形状
+    src/health/index.ts                # health 切片
+    src/machines/index.ts              # Machine 切片标记形状
+    src/tasks/index.ts                 # Task 切片标记形状
+    src/ws/index.ts                    # 控制通道标记形状
+    src/db/index.ts                    # 持久化标记形状
+    src/server.test.ts                 # 冒烟测试
 
   packages/client/
     package.json
     tsconfig.json
     src/index.ts
-    src/supervisor/index.ts            # Client Agent supervisor shape
-    src/ws-client/index.ts             # ws client config shape
-    src/task-runner/index.ts           # supported task type check
-    src/command-executor/index.ts      # command.run description, no shell execution
-    src/client.test.ts                 # smoke test
+    src/supervisor/index.ts            # Client Agent 监督器形状
+    src/ws-client/index.ts             # ws 客户端配置形状
+    src/task-runner/index.ts           # 支持的任务类型检查
+    src/command-executor/index.ts      # command.run 描述，不执行 shell
+    src/client.test.ts                 # 冒烟测试
 
   packages/sdk/
     package.json
     tsconfig.json
-    src/index.ts                       # NoesisClient + ping shape
-    src/sdk.test.ts                    # smoke test
+    src/index.ts                       # NoesisClient + ping 形状
+    src/sdk.test.ts                    # 冒烟测试
 
   packages/cli/
     package.json
     tsconfig.json
-    src/main.ts                        # help/version runner
-    src/cli.test.ts                    # smoke test
+    src/main.ts                        # help/version 运行器
+    src/cli.test.ts                    # 冒烟测试
 
   packages/web/
     package.json
@@ -75,7 +75,7 @@ noesis/
     src/styles.css
 ```
 
-Do not create these directories in this plan:
+本计划中不创建以下目录：
 
 ```text
 packages/server/src/controllers
@@ -100,22 +100,22 @@ packages/web/src/routes
 
 ---
 
-### Task 1: Workspace Governance and Root Commands
+### 任务 1：工作区治理和根命令
 
-**Files:**
+**文件：**
 
-- Create: `noesis/package.json`
-- Create: `noesis/pnpm-workspace.yaml`
-- Create: `noesis/tsconfig.base.json`
-- Create: `noesis/README.md`
-- Existing: `noesis/CONTEXT.md`
-- Existing: `noesis/AGENTS.md`
-- Existing: `noesis/docs/adr/0001-package-dependency-direction.md`
-- Existing: `noesis/.scratch/noesis-project-initialization/PRD.md`
+- 创建：`noesis/package.json`
+- 创建：`noesis/pnpm-workspace.yaml`
+- 创建：`noesis/tsconfig.base.json`
+- 创建：`noesis/README.md`
+- 已有：`noesis/CONTEXT.md`
+- 已有：`noesis/AGENTS.md`
+- 已有：`noesis/docs/adr/0001-package-dependency-direction.md`
+- 已有：`noesis/.scratch/noesis-project-initialization/PRD.md`
 
-- [ ] **Step 1: Write the root workspace files**
+- [ ] **步骤 1：编写根工作区文件**
 
-Create `noesis/package.json`:
+创建 `noesis/package.json`：
 
 ```json
 {
@@ -137,14 +137,14 @@ Create `noesis/package.json`:
 }
 ```
 
-Create `noesis/pnpm-workspace.yaml`:
+创建 `noesis/pnpm-workspace.yaml`：
 
 ```yaml
 packages:
   - "packages/*"
 ```
 
-Create `noesis/tsconfig.base.json`:
+创建 `noesis/tsconfig.base.json`：
 
 ```json
 {
@@ -163,16 +163,16 @@ Create `noesis/tsconfig.base.json`:
 }
 ```
 
-Create `noesis/README.md`:
+创建 `noesis/README.md`：
 
 ```md
 # Noesis 灵识
 
-Noesis 灵识 is a personal Human-AI Symbiotic Workspace. This repository is the fresh project root for the new implementation.
+Noesis 灵识是一个个人人机共生工作台。此仓库是新实现的独立项目根目录。
 
-## Current scope
+## 当前范围
 
-This workspace is intentionally small. The initialization phase only creates the P0 control-loop skeleton around these concepts:
+此工作区有意保持精简。初始化阶段仅围绕以下概念创建 P0 控制闭环骨架：
 
 - Gateway
 - Client Agent
@@ -180,9 +180,9 @@ This workspace is intentionally small. The initialization phase only creates the
 - Task
 - Task Event
 
-Do not copy implementation code from `noesis_bak`. Do not create future capability modules until their phase starts.
+不要从 `noesis_bak` 拷贝实现代码。不要在对应阶段开始之前创建未来能力模块。
 
-## Development
+## 开发
 
 ```bash
 pnpm install
@@ -190,60 +190,60 @@ pnpm build
 pnpm test
 ```
 
-## Project language
+## 项目语言
 
-Business-language docs use Simplified Chinese by default. Code identifiers, package names, protocol fields, database fields, and enum values use English.
+业务文档默认使用简体中文。代码标识符、包名、协议字段、数据库字段和枚举值使用英文。
 
 ```
 
-- [ ] **Step 2: Install workspace dependencies**
+- [ ] **步骤 2：安装工作区依赖**
 
-Run from the current repository root:
+在仓库根目录执行：
 
 ```bash
 cd "noesis" && pnpm install
 ```
 
-Expected: pnpm creates `pnpm-lock.yaml` and exits successfully.
+预期：pnpm 创建 `pnpm-lock.yaml` 并成功退出。
 
-- [ ] **Step 3: Verify root commands before packages exist**
+- [ ] **步骤 3：在包存在前验证根命令**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
 cd "noesis" && pnpm test
 ```
 
-Expected: both commands exit successfully or no-op across an empty `packages/*` workspace.
+预期：两个命令都成功退出，或在空 `packages/*` 工作区上无操作。
 
-- [ ] **Step 4: Commit workspace root**
+- [ ] **步骤 4：提交工作区根目录**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/package.json noesis/pnpm-workspace.yaml noesis/tsconfig.base.json noesis/README.md noesis/pnpm-lock.yaml
-git commit -m "chore(noesis): initialize workspace root"
+git commit -m "chore(noesis): 初始化工作区根目录"
 ```
 
-Expected: one commit containing only the root workspace files and lockfile.
+预期：一个提交，仅包含根工作区文件和锁文件。
 
 ---
 
-### Task 2: Shared Protocol Foundation
+### 任务 2：共享协议基础
 
-**Files:**
+**文件：**
 
-- Create: `noesis/packages/shared/package.json`
-- Create: `noesis/packages/shared/tsconfig.json`
-- Create: `noesis/packages/shared/src/protocol.test.ts`
-- Create: `noesis/packages/shared/src/protocol.ts`
-- Create: `noesis/packages/shared/src/errors.ts`
-- Create: `noesis/packages/shared/src/index.ts`
+- 创建：`noesis/packages/shared/package.json`
+- 创建：`noesis/packages/shared/tsconfig.json`
+- 创建：`noesis/packages/shared/src/protocol.test.ts`
+- 创建：`noesis/packages/shared/src/protocol.ts`
+- 创建：`noesis/packages/shared/src/errors.ts`
+- 创建：`noesis/packages/shared/src/index.ts`
 
-- [ ] **Step 1: Create package metadata and failing smoke test**
+- [ ] **步骤 1：创建包元数据和失败的冒烟测试**
 
-Create `noesis/packages/shared/package.json`:
+创建 `noesis/packages/shared/package.json`：
 
 ```json
 {
@@ -266,7 +266,7 @@ Create `noesis/packages/shared/package.json`:
 }
 ```
 
-Create `noesis/packages/shared/tsconfig.json`:
+创建 `noesis/packages/shared/tsconfig.json`：
 
 ```json
 {
@@ -279,7 +279,7 @@ Create `noesis/packages/shared/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/shared/src/protocol.test.ts`:
+创建 `noesis/packages/shared/src/protocol.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -291,8 +291,8 @@ import {
   type TaskEvent,
 } from "./index.js";
 
-describe("shared protocol foundation", () => {
-  it("exports the P0 protocol vocabulary", () => {
+describe("共享协议基础", () => {
+  it("导出 P0 协议词汇表", () => {
     const machine: Machine = {
       id: "machine_1",
       name: "本机",
@@ -325,19 +325,19 @@ describe("shared protocol foundation", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **步骤 2：运行测试确认它失败**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm --filter @noesis/shared test
 ```
 
-Expected: FAIL with an import error for `./index.js` because the shared implementation files do not exist yet.
+预期：由于共享实现文件尚不存在，因 `./index.js` 导入错误而 FAIL。
 
-- [ ] **Step 3: Add the minimal shared implementation**
+- [ ] **步骤 3：添加最小共享实现**
 
-Create `noesis/packages/shared/src/protocol.ts`:
+创建 `noesis/packages/shared/src/protocol.ts`：
 
 ```ts
 export const protocolVersion = "0.1.0" as const;
@@ -390,7 +390,7 @@ export interface GatewayHealth {
 }
 ```
 
-Create `noesis/packages/shared/src/errors.ts`:
+创建 `noesis/packages/shared/src/errors.ts`：
 
 ```ts
 export type NoesisErrorCode = "NOESIS_UNAVAILABLE" | "UNSUPPORTED_TASK_TYPE";
@@ -410,55 +410,55 @@ export function createNoesisError(
 }
 ```
 
-Create `noesis/packages/shared/src/index.ts`:
+创建 `noesis/packages/shared/src/index.ts`：
 
 ```ts
 export * from "./errors.js";
 export * from "./protocol.js";
 ```
 
-- [ ] **Step 4: Run shared build and test**
+- [ ] **步骤 4：运行共享包的构建和测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm --filter @noesis/shared build
 cd "noesis" && pnpm --filter @noesis/shared test
 ```
 
-Expected: both commands PASS.
+预期：两个命令都 PASS。
 
-- [ ] **Step 5: Commit shared package**
+- [ ] **步骤 5：提交共享包**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/packages/shared
-git commit -m "feat(noesis): add shared protocol foundation"
+git commit -m "feat(noesis): 添加共享协议基础"
 ```
 
-Expected: one commit containing only the shared package.
+预期：一个提交，仅包含共享包。
 
 ---
 
-### Task 3: Gateway Health Slice
+### 任务 3：Gateway Health 切片
 
-**Files:**
+**文件：**
 
-- Create: `noesis/packages/server/package.json`
-- Create: `noesis/packages/server/tsconfig.json`
-- Create: `noesis/packages/server/src/server.test.ts`
-- Create: `noesis/packages/server/src/index.ts`
-- Create: `noesis/packages/server/src/app.ts`
-- Create: `noesis/packages/server/src/health/index.ts`
-- Create: `noesis/packages/server/src/machines/index.ts`
-- Create: `noesis/packages/server/src/tasks/index.ts`
-- Create: `noesis/packages/server/src/ws/index.ts`
-- Create: `noesis/packages/server/src/db/index.ts`
+- 创建：`noesis/packages/server/package.json`
+- 创建：`noesis/packages/server/tsconfig.json`
+- 创建：`noesis/packages/server/src/server.test.ts`
+- 创建：`noesis/packages/server/src/index.ts`
+- 创建：`noesis/packages/server/src/app.ts`
+- 创建：`noesis/packages/server/src/health/index.ts`
+- 创建：`noesis/packages/server/src/machines/index.ts`
+- 创建：`noesis/packages/server/src/tasks/index.ts`
+- 创建：`noesis/packages/server/src/ws/index.ts`
+- 创建：`noesis/packages/server/src/db/index.ts`
 
-- [ ] **Step 1: Create package metadata and failing smoke test**
+- [ ] **步骤 1：创建包元数据和失败的冒烟测试**
 
-Create `noesis/packages/server/package.json`:
+创建 `noesis/packages/server/package.json`：
 
 ```json
 {
@@ -484,7 +484,7 @@ Create `noesis/packages/server/package.json`:
 }
 ```
 
-Create `noesis/packages/server/tsconfig.json`:
+创建 `noesis/packages/server/tsconfig.json`：
 
 ```json
 {
@@ -497,14 +497,14 @@ Create `noesis/packages/server/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/server/src/server.test.ts`:
+创建 `noesis/packages/server/src/server.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { createGatewayApp } from "./index.js";
 
-describe("Gateway health slice", () => {
-  it("exposes a minimal Gateway app shape", () => {
+describe("Gateway health 切片", () => {
+  it("暴露最小的 Gateway 应用形状", () => {
     const app = createGatewayApp();
 
     expect(app.name).toBe("Noesis Gateway");
@@ -518,19 +518,19 @@ describe("Gateway health slice", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **步骤 2：运行测试确认它失败**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build && pnpm --filter @noesis/server test
 ```
 
-Expected: FAIL with an import error for `./index.js` because the Gateway implementation files do not exist yet.
+预期：由于 Gateway 实现文件尚不存在，因 `./index.js` 导入错误而 FAIL。
 
-- [ ] **Step 3: Add the minimal Gateway implementation**
+- [ ] **步骤 3：添加最小 Gateway 实现**
 
-Create `noesis/packages/server/src/health/index.ts`:
+创建 `noesis/packages/server/src/health/index.ts`：
 
 ```ts
 import { protocolVersion, type GatewayHealth } from "@noesis/shared";
@@ -544,31 +544,31 @@ export function getGatewayHealth(): GatewayHealth {
 }
 ```
 
-Create `noesis/packages/server/src/machines/index.ts`:
+创建 `noesis/packages/server/src/machines/index.ts`：
 
 ```ts
 export const machinesSlice = "machines" as const;
 ```
 
-Create `noesis/packages/server/src/tasks/index.ts`:
+创建 `noesis/packages/server/src/tasks/index.ts`：
 
 ```ts
 export const tasksSlice = "tasks" as const;
 ```
 
-Create `noesis/packages/server/src/ws/index.ts`:
+创建 `noesis/packages/server/src/ws/index.ts`：
 
 ```ts
 export const wsSlice = "ws" as const;
 ```
 
-Create `noesis/packages/server/src/db/index.ts`:
+创建 `noesis/packages/server/src/db/index.ts`：
 
 ```ts
 export const dbSlice = "db" as const;
 ```
 
-Create `noesis/packages/server/src/app.ts`:
+创建 `noesis/packages/server/src/app.ts`：
 
 ```ts
 import { dbSlice } from "./db/index.js";
@@ -592,53 +592,53 @@ export function createGatewayApp(): GatewayAppShape {
 }
 ```
 
-Create `noesis/packages/server/src/index.ts`:
+创建 `noesis/packages/server/src/index.ts`：
 
 ```ts
 export * from "./app.js";
 export * from "./health/index.js";
 ```
 
-- [ ] **Step 4: Run Gateway build and test**
+- [ ] **步骤 4：运行 Gateway 构建和测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
 cd "noesis" && pnpm --filter @noesis/server test
 ```
 
-Expected: both commands PASS.
+预期：两个命令都 PASS。
 
-- [ ] **Step 5: Commit Gateway package**
+- [ ] **步骤 5：提交 Gateway 包**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/packages/server
-git commit -m "feat(noesis): add gateway health slice"
+git commit -m "feat(noesis): 添加 Gateway health 切片"
 ```
 
-Expected: one commit containing only the Gateway package.
+预期：一个提交，仅包含 Gateway 包。
 
 ---
 
-### Task 4: Client Agent command.run Shape
+### 任务 4：Client Agent command.run 形状
 
-**Files:**
+**文件：**
 
-- Create: `noesis/packages/client/package.json`
-- Create: `noesis/packages/client/tsconfig.json`
-- Create: `noesis/packages/client/src/client.test.ts`
-- Create: `noesis/packages/client/src/index.ts`
-- Create: `noesis/packages/client/src/supervisor/index.ts`
-- Create: `noesis/packages/client/src/ws-client/index.ts`
-- Create: `noesis/packages/client/src/task-runner/index.ts`
-- Create: `noesis/packages/client/src/command-executor/index.ts`
+- 创建：`noesis/packages/client/package.json`
+- 创建：`noesis/packages/client/tsconfig.json`
+- 创建：`noesis/packages/client/src/client.test.ts`
+- 创建：`noesis/packages/client/src/index.ts`
+- 创建：`noesis/packages/client/src/supervisor/index.ts`
+- 创建：`noesis/packages/client/src/ws-client/index.ts`
+- 创建：`noesis/packages/client/src/task-runner/index.ts`
+- 创建：`noesis/packages/client/src/command-executor/index.ts`
 
-- [ ] **Step 1: Create package metadata and failing smoke test**
+- [ ] **步骤 1：创建包元数据和失败的冒烟测试**
 
-Create `noesis/packages/client/package.json`:
+创建 `noesis/packages/client/package.json`：
 
 ```json
 {
@@ -664,7 +664,7 @@ Create `noesis/packages/client/package.json`:
 }
 ```
 
-Create `noesis/packages/client/tsconfig.json`:
+创建 `noesis/packages/client/tsconfig.json`：
 
 ```json
 {
@@ -677,14 +677,14 @@ Create `noesis/packages/client/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/client/src/client.test.ts`:
+创建 `noesis/packages/client/src/client.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { createClientSupervisor } from "./index.js";
 
-describe("Client Agent command.run shape", () => {
-  it("exposes the P0 Client Agent execution shape without running a shell", () => {
+describe("Client Agent command.run 形状", () => {
+  it("暴露 P0 Client Agent 执行形状而不运行 shell", () => {
     const supervisor = createClientSupervisor({ gatewayUrl: "http://127.0.0.1:8080" });
 
     expect(supervisor.kind).toBe("client-agent-supervisor");
@@ -698,19 +698,19 @@ describe("Client Agent command.run shape", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **步骤 2：运行测试确认它失败**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build && pnpm --filter @noesis/client test
 ```
 
-Expected: FAIL with an import error for `./index.js` because the Client Agent implementation files do not exist yet.
+预期：由于 Client Agent 实现文件尚不存在，因 `./index.js` 导入错误而 FAIL。
 
-- [ ] **Step 3: Add the minimal Client Agent implementation**
+- [ ] **步骤 3：添加最小 Client Agent 实现**
 
-Create `noesis/packages/client/src/ws-client/index.ts`:
+创建 `noesis/packages/client/src/ws-client/index.ts`：
 
 ```ts
 export interface ClientWsShape {
@@ -722,7 +722,7 @@ export function createClientWsShape(gatewayUrl: string): ClientWsShape {
 }
 ```
 
-Create `noesis/packages/client/src/task-runner/index.ts`:
+创建 `noesis/packages/client/src/task-runner/index.ts`：
 
 ```ts
 import type { TaskType } from "@noesis/shared";
@@ -740,7 +740,7 @@ export function createTaskRunnerShape(): TaskRunnerShape {
 }
 ```
 
-Create `noesis/packages/client/src/command-executor/index.ts`:
+创建 `noesis/packages/client/src/command-executor/index.ts`：
 
 ```ts
 import type { TaskType } from "@noesis/shared";
@@ -761,7 +761,7 @@ export function createCommandExecutorShape(): CommandExecutorShape {
 }
 ```
 
-Create `noesis/packages/client/src/supervisor/index.ts`:
+创建 `noesis/packages/client/src/supervisor/index.ts`：
 
 ```ts
 import { createCommandExecutorShape, type CommandExecutorShape } from "../command-executor/index.js";
@@ -789,52 +789,52 @@ export function createClientSupervisor(options: ClientSupervisorOptions): Client
 }
 ```
 
-Create `noesis/packages/client/src/index.ts`:
+创建 `noesis/packages/client/src/index.ts`：
 
 ```ts
 export * from "./supervisor/index.js";
 ```
 
-- [ ] **Step 4: Run Client Agent build and test**
+- [ ] **步骤 4：运行 Client Agent 构建和测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
 cd "noesis" && pnpm --filter @noesis/client test
 ```
 
-Expected: both commands PASS.
+预期：两个命令都 PASS。
 
-- [ ] **Step 5: Commit Client Agent package**
+- [ ] **步骤 5：提交 Client Agent 包**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/packages/client
-git commit -m "feat(noesis): add client agent command shape"
+git commit -m "feat(noesis): 添加 Client Agent 命令形状"
 ```
 
-Expected: one commit containing only the Client Agent package.
+预期：一个提交，仅包含 Client Agent 包。
 
 ---
 
-### Task 5: SDK and CLI Connection Shell
+### 任务 5：SDK 和 CLI 连接外壳
 
-**Files:**
+**文件：**
 
-- Create: `noesis/packages/sdk/package.json`
-- Create: `noesis/packages/sdk/tsconfig.json`
-- Create: `noesis/packages/sdk/src/sdk.test.ts`
-- Create: `noesis/packages/sdk/src/index.ts`
-- Create: `noesis/packages/cli/package.json`
-- Create: `noesis/packages/cli/tsconfig.json`
-- Create: `noesis/packages/cli/src/cli.test.ts`
-- Create: `noesis/packages/cli/src/main.ts`
+- 创建：`noesis/packages/sdk/package.json`
+- 创建：`noesis/packages/sdk/tsconfig.json`
+- 创建：`noesis/packages/sdk/src/sdk.test.ts`
+- 创建：`noesis/packages/sdk/src/index.ts`
+- 创建：`noesis/packages/cli/package.json`
+- 创建：`noesis/packages/cli/tsconfig.json`
+- 创建：`noesis/packages/cli/src/cli.test.ts`
+- 创建：`noesis/packages/cli/src/main.ts`
 
-- [ ] **Step 1: Create SDK package metadata and failing smoke test**
+- [ ] **步骤 1：创建 SDK 包元数据和失败的冒烟测试**
 
-Create `noesis/packages/sdk/package.json`:
+创建 `noesis/packages/sdk/package.json`：
 
 ```json
 {
@@ -860,7 +860,7 @@ Create `noesis/packages/sdk/package.json`:
 }
 ```
 
-Create `noesis/packages/sdk/tsconfig.json`:
+创建 `noesis/packages/sdk/tsconfig.json`：
 
 ```json
 {
@@ -873,14 +873,14 @@ Create `noesis/packages/sdk/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/sdk/src/sdk.test.ts`:
+创建 `noesis/packages/sdk/src/sdk.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { NoesisClient } from "./index.js";
 
-describe("Noesis SDK shell", () => {
-  it("constructs a client and exposes a deterministic ping shape", async () => {
+describe("Noesis SDK 外壳", () => {
+  it("构造一个客户端并暴露确定性的 ping 形状", async () => {
     const client = new NoesisClient({ baseUrl: "http://127.0.0.1:8080" });
 
     await expect(client.ping()).resolves.toEqual({
@@ -892,19 +892,19 @@ describe("Noesis SDK shell", () => {
 });
 ```
 
-- [ ] **Step 2: Run the SDK test to verify it fails**
+- [ ] **步骤 2：运行 SDK 测试确认它失败**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build && pnpm --filter @noesis/sdk test
 ```
 
-Expected: FAIL with an import error for `./index.js` because the SDK implementation does not exist yet.
+预期：由于 SDK 实现尚不存在，因 `./index.js` 导入错误而 FAIL。
 
-- [ ] **Step 3: Add the minimal SDK implementation**
+- [ ] **步骤 3：添加最小 SDK 实现**
 
-Create `noesis/packages/sdk/src/index.ts`:
+创建 `noesis/packages/sdk/src/index.ts`：
 
 ```ts
 import { protocolVersion } from "@noesis/shared";
@@ -936,20 +936,20 @@ export class NoesisClient {
 }
 ```
 
-- [ ] **Step 4: Run SDK build and test**
+- [ ] **步骤 4：运行 SDK 构建和测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
 cd "noesis" && pnpm --filter @noesis/sdk test
 ```
 
-Expected: both commands PASS.
+预期：两个命令都 PASS。
 
-- [ ] **Step 5: Create CLI package metadata and failing smoke test**
+- [ ] **步骤 5：创建 CLI 包元数据和失败的冒烟测试**
 
-Create `noesis/packages/cli/package.json`:
+创建 `noesis/packages/cli/package.json`：
 
 ```json
 {
@@ -972,7 +972,7 @@ Create `noesis/packages/cli/package.json`:
 }
 ```
 
-Create `noesis/packages/cli/tsconfig.json`:
+创建 `noesis/packages/cli/tsconfig.json`：
 
 ```json
 {
@@ -985,21 +985,21 @@ Create `noesis/packages/cli/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/cli/src/cli.test.ts`:
+创建 `noesis/packages/cli/src/cli.test.ts`：
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { runCli } from "./main.js";
 
-describe("Noesis CLI shell", () => {
-  it("renders help", () => {
+describe("Noesis CLI 外壳", () => {
+  it("渲染帮助信息", () => {
     expect(runCli(["--help"])).toEqual({
       exitCode: 0,
       stdout: "Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n",
     });
   });
 
-  it("renders version through the SDK shell", () => {
+  it("通过 SDK 外壳渲染版本信息", () => {
     expect(runCli(["version"])).toEqual({
       exitCode: 0,
       stdout: "noesis 0.0.0\nsdk ping protocol 0.1.0\n",
@@ -1008,19 +1008,19 @@ describe("Noesis CLI shell", () => {
 });
 ```
 
-- [ ] **Step 6: Run the CLI test to verify it fails**
+- [ ] **步骤 6：运行 CLI 测试确认它失败**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build && pnpm --filter @noesis/cli test
 ```
 
-Expected: FAIL with an import error for `./main.js` because the CLI implementation does not exist yet.
+预期：由于 CLI 实现尚不存在，因 `./main.js` 导入错误而 FAIL。
 
-- [ ] **Step 7: Add the minimal CLI implementation**
+- [ ] **步骤 7：添加最小 CLI 实现**
 
-Create `noesis/packages/cli/src/main.ts`:
+创建 `noesis/packages/cli/src/main.ts`：
 
 ```ts
 import { NoesisClient } from "@noesis/sdk";
@@ -1063,9 +1063,9 @@ if (isEntrypoint) {
 }
 ```
 
-- [ ] **Step 8: Run SDK and CLI build/test**
+- [ ] **步骤 8：运行 SDK 和 CLI 构建/测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
@@ -1073,36 +1073,36 @@ cd "noesis" && pnpm --filter @noesis/sdk test
 cd "noesis" && pnpm --filter @noesis/cli test
 ```
 
-Expected: all commands PASS.
+预期：所有命令都 PASS。
 
-- [ ] **Step 9: Commit SDK and CLI packages**
+- [ ] **步骤 9：提交 SDK 和 CLI 包**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/packages/sdk noesis/packages/cli
-git commit -m "feat(noesis): add sdk and cli shells"
+git commit -m "feat(noesis): 添加 SDK 和 CLI 外壳"
 ```
 
-Expected: one commit containing only SDK and CLI packages.
+预期：一个提交，仅包含 SDK 和 CLI 包。
 
 ---
 
-### Task 6: Web Console Shell
+### 任务 6：Web 控制台外壳
 
-**Files:**
+**文件：**
 
-- Create: `noesis/packages/web/package.json`
-- Create: `noesis/packages/web/tsconfig.json`
-- Create: `noesis/packages/web/index.html`
-- Create: `noesis/packages/web/vite.config.ts`
-- Create: `noesis/packages/web/src/main.tsx`
-- Create: `noesis/packages/web/src/App.tsx`
-- Create: `noesis/packages/web/src/styles.css`
+- 创建：`noesis/packages/web/package.json`
+- 创建：`noesis/packages/web/tsconfig.json`
+- 创建：`noesis/packages/web/index.html`
+- 创建：`noesis/packages/web/vite.config.ts`
+- 创建：`noesis/packages/web/src/main.tsx`
+- 创建：`noesis/packages/web/src/App.tsx`
+- 创建：`noesis/packages/web/src/styles.css`
 
-- [ ] **Step 1: Create Web package metadata and app files**
+- [ ] **步骤 1：创建 Web 包元数据和应用文件**
 
-Create `noesis/packages/web/package.json`:
+创建 `noesis/packages/web/package.json`：
 
 ```json
 {
@@ -1128,7 +1128,7 @@ Create `noesis/packages/web/package.json`:
 }
 ```
 
-Create `noesis/packages/web/tsconfig.json`:
+创建 `noesis/packages/web/tsconfig.json`：
 
 ```json
 {
@@ -1146,7 +1146,7 @@ Create `noesis/packages/web/tsconfig.json`:
 }
 ```
 
-Create `noesis/packages/web/index.html`:
+创建 `noesis/packages/web/index.html`：
 
 ```html
 <!doctype html>
@@ -1163,7 +1163,7 @@ Create `noesis/packages/web/index.html`:
 </html>
 ```
 
-Create `noesis/packages/web/vite.config.ts`:
+创建 `noesis/packages/web/vite.config.ts`：
 
 ```ts
 import react from "@vitejs/plugin-react";
@@ -1174,7 +1174,7 @@ export default defineConfig({
 });
 ```
 
-Create `noesis/packages/web/src/App.tsx`:
+创建 `noesis/packages/web/src/App.tsx`：
 
 ```tsx
 import { protocolVersion } from "@noesis/shared";
@@ -1204,7 +1204,7 @@ export function App() {
 }
 ```
 
-Create `noesis/packages/web/src/main.tsx`:
+创建 `noesis/packages/web/src/main.tsx`：
 
 ```tsx
 import { StrictMode } from "react";
@@ -1215,7 +1215,7 @@ import "./styles.css";
 const rootElement = document.getElementById("root");
 
 if (rootElement === null) {
-  throw new Error("Noesis Web root element not found");
+  throw new Error("Noesis Web 根元素未找到");
 }
 
 createRoot(rootElement).render(
@@ -1225,7 +1225,7 @@ createRoot(rootElement).render(
 );
 ```
 
-Create `noesis/packages/web/src/styles.css`:
+创建 `noesis/packages/web/src/styles.css`：
 
 ```css
 :root {
@@ -1282,50 +1282,50 @@ h1 {
 }
 ```
 
-- [ ] **Step 2: Install Web dependencies**
+- [ ] **步骤 2：安装 Web 依赖**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm install
 ```
 
-Expected: pnpm lockfile updates with React and Vite dependencies.
+预期：pnpm 锁文件更新，包含 React 和 Vite 依赖。
 
-- [ ] **Step 3: Run Web build/test**
+- [ ] **步骤 3：运行 Web 构建/测试**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm build
 cd "noesis" && pnpm --filter @noesis/web test
 ```
 
-Expected: both commands PASS and Vite produces a production build for the Web shell.
+预期：两个命令都 PASS，Vite 为 Web 外壳生成生产构建。
 
-- [ ] **Step 4: Commit Web package**
+- [ ] **步骤 4：提交 Web 包**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/packages/web noesis/pnpm-lock.yaml
-git commit -m "feat(noesis): add web console shell"
+git commit -m "feat(noesis): 添加 Web 控制台外壳"
 ```
 
-Expected: one commit containing the Web package and dependency lockfile updates.
+预期：一个提交，包含 Web 包和依赖锁文件更新。
 
 ---
 
-### Task 7: Verify Dependency Direction and Initialization Scope
+### 任务 7：验证依赖方向和初始化范围
 
-**Files:**
+**文件：**
 
-- Modify: `noesis/package.json`
-- Create: `noesis/scripts/check-boundaries.mjs`
+- 修改：`noesis/package.json`
+- 创建：`noesis/scripts/check-boundaries.mjs`
 
-- [ ] **Step 1: Add root boundary scripts**
+- [ ] **步骤 1：添加根边界脚本**
 
-Replace `noesis/package.json` with:
+将 `noesis/package.json` 替换为：
 
 ```json
 {
@@ -1349,9 +1349,9 @@ Replace `noesis/package.json` with:
 }
 ```
 
-- [ ] **Step 2: Add the boundary check script**
+- [ ] **步骤 2：添加边界检查脚本**
 
-Create `noesis/scripts/check-boundaries.mjs`:
+创建 `noesis/scripts/check-boundaries.mjs`：
 
 ```js
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -1398,7 +1398,7 @@ function fail(message) {
 
 for (const name of readdirSync(packagesDir)) {
   if (!allowedPackages.has(name)) {
-    fail(`Unexpected Noesis package: ${name}`);
+    fail(`意外的 Noesis 包：${name}`);
   }
 }
 
@@ -1415,82 +1415,82 @@ for (const [name, allowedNoesisDeps] of Object.entries(packageDeps)) {
   const missing = allowedNoesisDeps.filter((dep) => !actualNoesisDeps.includes(dep));
 
   if (unexpected.length > 0) {
-    fail(`${manifest.name} has unexpected Noesis deps: ${unexpected.join(", ")}`);
+    fail(`${manifest.name} 有意外 Noesis 依赖：${unexpected.join(", ")}`);
   }
 
   if (missing.length > 0) {
-    fail(`${manifest.name} is missing expected Noesis deps: ${missing.join(", ")}`);
+    fail(`${manifest.name} 缺少预期 Noesis 依赖：${missing.join(", ")}`);
   }
 }
 
 for (const relativeDir of forbiddenDirs) {
   if (existsSync(join(root, relativeDir))) {
-    fail(`Forbidden initialization directory exists: ${relativeDir}`);
+    fail(`禁止的初始化目录存在：${relativeDir}`);
   }
 }
 
 if (process.exitCode === undefined) {
-  console.log("Noesis initialization boundaries OK");
+  console.log("Noesis 初始化边界检查通过");
 }
 ```
 
-- [ ] **Step 3: Run the boundary script**
+- [ ] **步骤 3：运行边界脚本**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm check:boundaries
 ```
 
-Expected: PASS with:
+预期：PASS，输出：
 
 ```text
-Noesis initialization boundaries OK
+Noesis 初始化边界检查通过
 ```
 
-- [ ] **Step 4: Run full workspace verification**
+- [ ] **步骤 4：运行完整工作区验证**
 
-Run:
+执行：
 
 ```bash
 cd "noesis" && pnpm verify
 ```
 
-Expected: build, package smoke tests, Web build, and boundary checks all PASS.
+预期：构建、包冒烟测试、Web 构建和边界检查全部 PASS。
 
-- [ ] **Step 5: Commit boundary verification**
+- [ ] **步骤 5：提交边界验证**
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 git add noesis/package.json noesis/scripts/check-boundaries.mjs
-git commit -m "test(noesis): verify initialization boundaries"
+git commit -m "test(noesis): 验证初始化边界"
 ```
 
-Expected: one commit containing the root verification script and script updates.
+预期：一个提交，包含根验证脚本和脚本更新。
 
 ---
 
-## Final Verification
+## 最终验证
 
-Run from the repository root:
+在仓库根目录执行：
 
 ```bash
 cd "noesis" && pnpm install
 cd "noesis" && pnpm verify
 ```
 
-Expected final result:
+预期最终结果：
 
 ```text
-Noesis initialization boundaries OK
+Noesis 初始化边界检查通过
 ```
 
-and all package builds/tests pass.
+且所有包构建/测试通过。
 
-## Self-Review
+## 自审
 
-- Spec coverage: all seven issues map to Tasks 1-7.
-- Placeholder scan: no `TBD`, unfinished requirements, or open implementation gaps remain in the task steps.
-- Type consistency: `protocolVersion`, `Machine`, `Task`, `TaskEvent`, `NoesisClient`, `createGatewayApp`, and `createClientSupervisor` are defined before later tasks use them.
-- Scope check: the plan does not create out-of-scope modules and includes a boundary script to keep that true.
+- 规格覆盖：全部七个 issue 映射到任务 1-7。
+- 占位检查：任务步骤中没有 `TBD`、未完成的需求或开放的实现缺口。
+- 类型一致性：`protocolVersion`、`Machine`、`Task`、`TaskEvent`、`NoesisClient`、`createGatewayApp` 和 `createClientSupervisor` 在后续任务使用之前已定义。
+- 范围检查：本计划不创建范围外的模块，并包含边界脚本来保持这一点。
