@@ -27,3 +27,7 @@ _避免_：除非指外部系统，否则不使用 Job
 **Task Event**：
 只追加不修改的事件流，用于 Task 的日志、进度、stdout/stderr、生命周期和证据。
 _避免_：仅指日志行
+
+**Noesis Distribution**：
+从源码工作区构建出的可安装发布产物集合，用于验证 Gateway、Client Agent、SDK 和 CLI 能以真实包边界串联运行。
+_避免_：工程骨架冒烟测试、单体演示包
