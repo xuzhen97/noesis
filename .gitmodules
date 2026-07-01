@@ -1,0 +1,6 @@
+[submodule "examples/enikk"]
+	path = examples/enikk
+	url = https://github.com/gtt116/enikk.git
+[submodule "examples/pi-webui"]
+	path = examples/pi-webui
+	url = https://github.com/khimaros/pi-webui
