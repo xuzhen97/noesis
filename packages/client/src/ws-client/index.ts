@@ -1,7 +1,7 @@
 export interface ClientWsShape {
-  gatewayUrl: string;
+	gatewayUrl: string;
 }
 
 export function createClientWsShape(gatewayUrl: string): ClientWsShape {
-  return { gatewayUrl };
+	return { gatewayUrl };
 }
