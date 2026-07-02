@@ -29,7 +29,116 @@ pnpm build:distribution
 pnpm verify:distribution
 ```
 
-目标环境需要 Node 24+。Gateway 和 Client Agent 压缩包解压后可直接用 `node dist/*.mjs` 或 `bin/` 脚本运行；CLI 使用本地 tgz 安装和升级；SDK 使用 npm tgz 集成。第一阶段不包含 Web、FRP、Computer Use、自更新或 Release Center。
+目标环境需要 Node 24+。CLI 使用本地 tgz 安装和升级；SDK 使用 npm tgz 集成。第一阶段不包含 Web、FRP、Computer Use、自更新或 Release Center。
+
+### 手动安装测试步骤
+
+构建产物位于 `release/noesis-distribution/`：
+
+```
+release/noesis-distribution/
+├── manifest.json              # sha256 清单
+├── noesis-gateway-0.0.0.tar.gz
+├── noesis-client-agent-0.0.0.tar.gz
+├── noesis-sdk-0.0.0.tgz
+├── noesis-cli-0.0.0.tgz
+└── noesis-gateway-0.0.0/      # Gateway vendor 目录
+    └── node_modules/ws/
+```
+
+**步骤 1：提取 Gateway 和 Client Agent**
+
+```bash
+# Windows (PowerShell)
+tar -xzf release/noesis-distribution/noesis-gateway-0.0.0.tar.gz -C /tmp/noesis-test
+tar -xzf release/noesis-distribution/noesis-client-agent-0.0.0.tar.gz -C /tmp/noesis-test
+
+# macOS / Linux
+tar -xzf release/noesis-distribution/noesis-gateway-0.0.0.tar.gz -C /tmp/noesis-test
+tar -xzf release/noesis-distribution/noesis-client-agent-0.0.0.tar.gz -C /tmp/noesis-test
+```
+
+**步骤 2：安装 CLI**
+
+```bash
+npm install -g ./release/noesis-distribution/noesis-cli-0.0.0.tgz
+```
+
+以后升级只需重新执行此命令覆盖即可。
+
+**步骤 3：安装 SDK（可选，供第三方项目集成）**
+
+```bash
+# 在目标项目中
+npm install ./path/to/noesis-sdk-0.0.0.tgz
+```
+
+**步骤 4：启动 Gateway**
+
+```bash
+node /tmp/noesis-test/noesis-gateway-0.0.0/dist/gateway.mjs --port 6375
+```
+
+启动后会在 stdout 输出一条 JSON 格式就绪信息：
+`{"noesisGatewayReady":true,"pid":...,"httpUrl":"http://127.0.0.1:6375"}`
+
+**步骤 5：启动 Client Agent**
+
+新开一个终端：
+
+```bash
+node /tmp/noesis-test/noesis-client-agent-0.0.0/dist/agent.mjs \
+  --gateway http://127.0.0.1:6375 \
+  --machine my-dev-machine
+```
+
+Client Agent 会通过 WebSocket 连接到 Gateway 并等待 Task 派发。
+
+**步骤 6：执行命令**
+
+```bash
+noesis task run \
+  --gateway http://127.0.0.1:6375 \
+  --machine my-dev-machine \
+  --json \
+  -- node -e "console.log('noesis-ok')"
+```
+
+成功输出示例：
+
+```json
+{
+  "taskId": "...",
+  "status": "succeeded",
+  "events": [
+    { "type": "task.running", "level": "info" },
+    { "type": "task.succeeded", "level": "info",
+      "data": { "exitCode": 0, "stdout": "noesis-ok" } }
+  ]
+}
+```
+
+**步骤 7：清理**
+
+按 `Ctrl+C` 停止 Gateway 和 Client Agent，然后：
+
+```bash
+npm uninstall -g @noesis/cli
+rm -rf /tmp/noesis-test
+```
+
+### 架构说明
+
+```
+CLI ──HTTP──▶ Gateway ──WebSocket──▶ Client Agent
+                │
+                └── 内存中维护 Machine / Task / Task Event 状态
+```
+
+- **Gateway**：HTTP API + WebSocket 服务，接收 CLI/SDK 请求，通过 WebSocket 派发 Task 到 Client Agent
+- **Client Agent**：WebSocket 客户端，连接到 Gateway 后等待 Task，执行仅有白名单命令（当前仅 `node -e "console.log('noesis-ok')"`）
+- **CLI**：命令行工具，通过 HTTP 与 Gateway 交互
+- **SDK**：Node.js 库，封装 HTTP API 调用
 
 ## 项目语言
 
