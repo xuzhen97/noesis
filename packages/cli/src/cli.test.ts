@@ -47,11 +47,12 @@ describe("Noesis CLI shell", () => {
 			),
 		).resolves.toEqual({
 			exitCode: 0,
-			stdout: JSON.stringify({
-				taskId: "task_1",
-				status: "succeeded",
-				stdout: "noesis-ok\n",
-			}) + "\n",
+			stdout:
+				JSON.stringify({
+					taskId: "task_1",
+					status: "succeeded",
+					stdout: "noesis-ok\n",
+				}) + "\n",
 			stderr: "",
 		});
 	});

@@ -21,10 +21,7 @@ export interface RunCliOptions {
 const help =
 	"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json -- node -e \"console.log('noesis-ok')\"\n";
 
-function readFlag(
-	args: readonly string[],
-	name: string,
-): string | undefined {
+function readFlag(args: readonly string[], name: string): string | undefined {
 	const index = args.indexOf(name);
 	return index === -1 ? undefined : args[index + 1];
 }
@@ -67,13 +64,11 @@ export async function runCli(
 				exitCode: 1,
 				stdout: "",
 				stderr:
-					'Usage: noesis task run --gateway <url> --machine <id> --json -- node -e "console.log(\'noesis-ok\')"\n',
+					"Usage: noesis task run --gateway <url> --machine <id> --json -- node -e \"console.log('noesis-ok')\"\n",
 			};
 		}
 
-		const client =
-			options.client ??
-			new NoesisClient({ baseUrl: gateway });
+		const client = options.client ?? new NoesisClient({ baseUrl: gateway });
 		const result = await client.runCommandAndWait({
 			machineId,
 			command: ["node", "-e", "console.log('noesis-ok')"],

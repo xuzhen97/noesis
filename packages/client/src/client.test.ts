@@ -31,7 +31,9 @@ describe("Client Agent command.run shape", () => {
 
 	it("rejects any command outside the fixed distribution smoke command", async () => {
 		await expect(
-			executeCommandRunTask({ command: ["node", "-e", "console.log('no')"] } as any),
+			executeCommandRunTask({
+				command: ["node", "-e", "console.log('no')"],
+			} as any),
 		).rejects.toMatchObject({
 			code: "COMMAND_NOT_ALLOWED",
 		});

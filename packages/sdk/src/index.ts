@@ -52,14 +52,11 @@ export class NoesisClient {
 		taskType: "command.run";
 		payload: CommandRunPayload;
 	}): Promise<Task> {
-		const response = await this.#fetch(
-			`${this.baseUrl}/api/tasks`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(input),
-			},
-		);
+		const response = await this.#fetch(`${this.baseUrl}/api/tasks`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(input),
+		});
 		return await this.#readApi<Task>(response);
 	}
 
@@ -71,9 +68,7 @@ export class NoesisClient {
 
 	async getTaskEvents(taskId: string): Promise<TaskEvent[]> {
 		return await this.#readApi<TaskEvent[]>(
-			await this.#fetch(
-				`${this.baseUrl}/api/tasks/${taskId}/events`,
-			),
+			await this.#fetch(`${this.baseUrl}/api/tasks/${taskId}/events`),
 		);
 	}
 
@@ -91,28 +86,20 @@ export class NoesisClient {
 		while (Date.now() <= deadline) {
 			const current = await this.getTask(task.id);
 			if (
-				["succeeded", "failed", "canceled", "timeout"].includes(
-					current.status,
-				)
+				["succeeded", "failed", "canceled", "timeout"].includes(current.status)
 			) {
 				const events = await this.getTaskEvents(task.id);
 				const stdout = events
 					.map((event) =>
-						typeof event.data.stdout === "string"
-							? event.data.stdout
-							: "",
+						typeof event.data.stdout === "string" ? event.data.stdout : "",
 					)
 					.join("");
 				return { taskId: task.id, status: current.status, stdout };
 			}
-			await new Promise((resolve) =>
-				setTimeout(resolve, pollIntervalMs),
-			);
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 		}
 
-		throw new Error(
-			`Task ${task.id} did not finish before timeout`,
-		);
+		throw new Error(`Task ${task.id} did not finish before timeout`);
 	}
 
 	async #readApi<T>(response: Response): Promise<T> {
