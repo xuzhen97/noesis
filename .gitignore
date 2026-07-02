@@ -4,3 +4,5 @@ dist/
 .scratch/
 .pnpm-store
 *.log
+TODO.md
+release/
