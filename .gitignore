@@ -2,6 +2,7 @@ node_modules/
 dist/
 .playwright-mcp/
 .scratch/
+.gitnexus/
 .pnpm-store
 *.log
 TODO.md
