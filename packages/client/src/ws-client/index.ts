@@ -98,21 +98,16 @@ export async function startClientAgent(
 						: {};
 				ws.send(
 					JSON.stringify(
-						makeEvent(
-							message.task.id,
-							"task.failed",
-							"failed",
-							{
-								code:
-									typeof safe.code === "string"
-										? safe.code
-										: "NOESIS_UNAVAILABLE",
-								message:
-									typeof safe.message === "string"
-										? safe.message
-										: "Command execution failed",
-							},
-						),
+						makeEvent(message.task.id, "task.failed", "failed", {
+							code:
+								typeof safe.code === "string"
+									? safe.code
+									: "NOESIS_UNAVAILABLE",
+							message:
+								typeof safe.message === "string"
+									? safe.message
+									: "Command execution failed",
+						}),
 					),
 				);
 			}

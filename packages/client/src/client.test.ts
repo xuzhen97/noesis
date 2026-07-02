@@ -19,7 +19,9 @@ describe("Client Agent command.run shape", () => {
 
 	it("executes only the fixed distribution smoke command", async () => {
 		await expect(
-			executeCommandRunTask({ command: ["node", "-e", "console.log('noesis-ok')"] }),
+			executeCommandRunTask({
+				command: ["node", "-e", "console.log('noesis-ok')"],
+			}),
 		).resolves.toEqual({
 			stdout: "noesis-ok\n",
 			stderr: "",
@@ -29,7 +31,7 @@ describe("Client Agent command.run shape", () => {
 
 	it("rejects any command outside the fixed distribution smoke command", async () => {
 		await expect(
-			executeCommandRunTask({ command: ["node", "-e", "console.log('no')"] }),
+			executeCommandRunTask({ command: ["node", "-e", "console.log('no')"] } as any),
 		).rejects.toMatchObject({
 			code: "COMMAND_NOT_ALLOWED",
 		});

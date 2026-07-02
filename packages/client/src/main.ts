@@ -1,9 +1,6 @@
 import { startClientAgent } from "./ws-client/index.js";
 
-function readRequired(
-	args: readonly string[],
-	name: string,
-): string {
+function readRequired(args: readonly string[], name: string): string {
 	const index = args.indexOf(name);
 	const value = index === -1 ? undefined : args[index + 1];
 	if (!value) throw new Error(`${name} is required`);
@@ -30,9 +27,7 @@ if (
 	process.argv[1]?.endsWith("client-agent.mjs")
 ) {
 	runClientAgentMain().catch((error: unknown) => {
-		console.error(
-			error instanceof Error ? error.message : String(error),
-		);
+		console.error(error instanceof Error ? error.message : String(error));
 		process.exitCode = 1;
 	});
 }
