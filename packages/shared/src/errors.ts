@@ -1,4 +1,11 @@
-export type NoesisErrorCode = "NOESIS_UNAVAILABLE" | "UNSUPPORTED_TASK_TYPE";
+export type NoesisErrorCode =
+  | "BAD_REQUEST"
+  | "COMMAND_NOT_ALLOWED"
+  | "MACHINE_NOT_FOUND"
+  | "NOESIS_UNAVAILABLE"
+  | "TASK_NOT_FOUND"
+  | "TASK_TIMEOUT"
+  | "UNSUPPORTED_TASK_TYPE";
 
 export interface NoesisErrorShape {
   code: NoesisErrorCode;
