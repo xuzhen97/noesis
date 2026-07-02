@@ -22,7 +22,12 @@ export interface ClientAgentConnection {
 }
 
 function toWsUrl(gatewayUrl: string): string {
-	const url = new URL(gatewayUrl);
+	let url: URL;
+	try {
+		url = new URL(gatewayUrl);
+	} catch {
+		throw new Error("Invalid gateway URL");
+	}
 	url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 	url.pathname = "/ws/client";
 	return url.toString();

@@ -6,19 +6,20 @@ import { basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-function posix(p) { return p.replace(/\\/g, "/"); }
-function msys(p) {
-	const m = p.match(/^([A-Za-z]):\/(.*)$/);
-	if (m) return "/" + m[1].toLowerCase() + "/" + m[2];
-	return p;
+function posix(p) {
+	return p.replace(/\\/g, "/");
 }
 
-const root = posix(resolve(fileURLToPath(new URL("..", import.meta.url))));
-const releaseDir = posix(join(root, "release", "noesis-distribution"));
-const stagingDir = posix(join(releaseDir, ".staging"));
+const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const releaseDir = join(root, "release", "noesis-distribution");
+const stagingDir = join(releaseDir, ".staging");
 const pkgRaw = await readFile(join(root, "package.json"), "utf8");
 let pkg;
-try { pkg = JSON.parse(pkgRaw); } catch { throw new Error("root package.json is not valid JSON"); }
+try {
+	pkg = JSON.parse(pkgRaw);
+} catch {
+	throw new Error("root package.json is not valid JSON");
+}
 const version = pkg.version;
 
 async function bundle(entry, outfile) {
@@ -34,14 +35,24 @@ async function bundle(entry, outfile) {
 	});
 }
 
+function tarBin() {
+	if (process.platform !== "win32") return "tar";
+	// Windows built-in tar understands forward-slash paths
+	const winTar = "C:\\Windows\\System32\\tar.exe";
+	if (existsSync(winTar)) return winTar;
+	return "tar";
+}
+
 function run(command, args, cwd) {
-	const result = spawnSync(command, args, {
+	const isTar = command === "tar";
+	const cmd = isTar ? tarBin() : command;
+	const result = spawnSync(cmd, args, {
 		cwd: cwd ?? root,
 		stdio: "inherit",
-		shell: process.platform === "win32",
+		shell: !isTar && process.platform === "win32",
 	});
 	if (result.status !== 0) {
-		throw new Error(`${command} ${args.join(" ")} failed`);
+		throw new Error(`${cmd} ${args.join(" ")} failed`);
 	}
 }
 
@@ -56,25 +67,27 @@ async function writeLauncher(dir, name, target) {
 	await writeFile(
 		join(dir, "bin", `${name}.sh`),
 		"#!/usr/bin/env bash\n" +
-		"set -euo pipefail\n" +
-		'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' + "\n" +
-		`node "$SCRIPT_DIR/../dist/${target}" "$@"\n`,
+			"set -euo pipefail\n" +
+			'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' +
+			"\n" +
+			`node "$SCRIPT_DIR/../dist/${target}" "$@"\n`,
 	);
 	await writeFile(
 		join(dir, "bin", `${name}.ps1`),
-		'$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition' + "\n" +
-		`node (Join-Path $ScriptDir "../dist/${target}") @args` + "\n",
+		"$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition" +
+			"\n" +
+			`node (Join-Path $ScriptDir "../dist/${target}") @args` +
+			"\n",
 	);
 }
 
 async function packTar(sourceDir, artifactName) {
-	const artifactPosix = posix(join(releaseDir, artifactName));
-	const artifactMsys = msys(artifactPosix);
+	const artifact = posix(join(releaseDir, artifactName));
 	run("tar", [
 		"-czf",
-		artifactMsys,
+		artifact,
 		"-C",
-		msys(stagingDir),
+		posix(stagingDir),
 		basename(sourceDir),
 	]);
 	return artifactName;
@@ -95,13 +108,7 @@ async function vendorWs(targetDir) {
 async function packNpm(packageDir) {
 	run(
 		"npm",
-		[
-			"pack",
-			packageDir,
-			"--pack-destination",
-			releaseDir,
-			"--ignore-scripts",
-		],
+		["pack", packageDir, "--pack-destination", releaseDir, "--ignore-scripts"],
 		root,
 	);
 }
@@ -121,11 +128,8 @@ await vendorWs(gatewayDir);
 await writeLauncher(gatewayDir, "noesis-gateway", "gateway.mjs");
 await writeFile(
 	join(gatewayDir, "package.json"),
-	JSON.stringify(
-		{ name: "noesis-gateway", version, type: "module" },
-		null,
-		2,
-	) + "\n",
+	JSON.stringify({ name: "noesis-gateway", version, type: "module" }, null, 2) +
+		"\n",
 );
 const gatewayArtifact = await packTar(
 	gatewayDir,

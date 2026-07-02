@@ -6,24 +6,29 @@ import { spawn, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-function msys(p) {
-	const m = p.replace(/\\/g, "/").match(/^([A-Za-z]):\/(.*)$/);
-	if (m) return "/" + m[1].toLowerCase() + "/" + m[2];
-	return p.replace(/\\/g, "/");
+function posix(p) { return p.replace(/\\/g, "/"); }
+
+function tarBin() {
+	if (process.platform !== "win32") return "tar";
+	const winTar = "C:\\Windows\\System32\\tar.exe";
+	if (existsSync(winTar)) return winTar;
+	return "tar";
 }
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const releaseDir = join(root, "release", "noesis-distribution");
 
 function run(command, args, options) {
-	const result = spawnSync(command, args, {
+	const isTar = command === "tar";
+	const cmd = isTar ? tarBin() : command;
+	const result = spawnSync(cmd, args, {
 		cwd: root,
 		stdio: "inherit",
-		shell: process.platform === "win32",
+		shell: !isTar && process.platform === "win32",
 		...options,
 	});
 	if (result.status !== 0) {
-		throw new Error(`${command} ${args.join(" ")} failed`);
+		throw new Error(`${cmd} ${args.join(" ")} failed`);
 	}
 }
 
@@ -78,9 +83,7 @@ function waitForLine(child, marker) {
 		});
 		child.stderr.on("data", (chunk) => process.stderr.write(chunk));
 		child.on("exit", (code) => {
-			reject(
-				new Error(`${marker} process exited early with ${code}`),
-			);
+			reject(new Error(`${marker} process exited early with ${code}`));
 		});
 	});
 }
@@ -102,31 +105,25 @@ try {
 
 	// Verify hashes
 	for (const artifact of Object.values(manifest.artifacts)) {
-		await verifyHash(
-			join(releaseDir, artifact.file),
-			artifact.sha256,
-		);
+		await verifyHash(join(releaseDir, artifact.file), artifact.sha256);
 	}
 
 	// Extract tar.gz artifacts
 	run("tar", [
 		"-xzf",
-		msys(join(releaseDir, manifest.artifacts.gateway.file)),
+		posix(join(releaseDir, manifest.artifacts.gateway.file)),
 		"-C",
-		msys(tempDir),
+		posix(tempDir),
 	]);
 	run("tar", [
 		"-xzf",
-		msys(join(releaseDir, manifest.artifacts.clientAgent.file)),
+		posix(join(releaseDir, manifest.artifacts.clientAgent.file)),
 		"-C",
-		msys(tempDir),
+		posix(tempDir),
 	]);
 
 	const gatewayDir = join(tempDir, `noesis-gateway-${manifest.version}`);
-	const clientDir = join(
-		tempDir,
-		`noesis-client-agent-${manifest.version}`,
-	);
+	const clientDir = join(tempDir, `noesis-client-agent-${manifest.version}`);
 	const prefix = join(tempDir, "npm-prefix");
 
 	// Install CLI via npm
@@ -142,35 +139,48 @@ try {
 	]);
 
 	// Start Gateway
-	const gateway = startNode(
-		join(gatewayDir, "dist", "gateway.mjs"),
-		["--port", "0"],
-	);
+	const gateway = startNode(join(gatewayDir, "dist", "gateway.mjs"), [
+		"--port",
+		"0",
+	]);
 	children.push(gateway);
 	const ready = await waitForLine(gateway, "NOESIS_GATEWAY_READY");
 
 	// Start Client Agent
-	const client = startNode(
-		join(clientDir, "dist", "client-agent.mjs"),
-		["--gateway", ready.httpUrl, "--machine-id", "local-dev-machine"],
-	);
+	const client = startNode(join(clientDir, "dist", "client-agent.mjs"), [
+		"--gateway",
+		ready.httpUrl,
+		"--machine-id",
+		"local-dev-machine",
+	]);
 	children.push(client);
 	await waitForLine(client, "NOESIS_CLIENT_AGENT_READY");
 
 	// Run CLI task via the bundled cli.mjs
 	// Find the CLI cli.mjs in the installed package
 	const { readdirSync } = await import("node:fs");
-	let cliScript = join(prefix, "node_modules", "@noesis", "cli", "dist", "cli.mjs");
+	let cliScript = join(
+		prefix,
+		"node_modules",
+		"@noesis",
+		"cli",
+		"dist",
+		"cli.mjs",
+	);
 	if (!existsSync(cliScript)) {
 		cliScript = null;
 		const nm = join(prefix, "node_modules");
 		if (existsSync(nm)) {
 			for (const f of readdirSync(nm)) {
 				const p = join(nm, f, "dist", "cli.mjs");
-				if (existsSync(p)) { cliScript = p; break; }
+				if (existsSync(p)) {
+					cliScript = p;
+					break;
+				}
 			}
 		}
-		if (!cliScript) throw new Error("CLI cli.mjs not found in installed package");
+		if (!cliScript)
+			throw new Error("CLI cli.mjs not found in installed package");
 	}
 
 	const stdout = runCapture(process.execPath, [
@@ -189,9 +199,7 @@ try {
 	]);
 	const result = JSON.parse(stdout);
 	if (result.status !== "succeeded") {
-		throw new Error(
-			`Expected succeeded, got ${result.status}`,
-		);
+		throw new Error(`Expected succeeded, got ${result.status}`);
 	}
 	if (result.stdout !== "noesis-ok\n") {
 		throw new Error(
@@ -202,7 +210,11 @@ try {
 	console.log("Noesis Distribution verification OK");
 } finally {
 	for (const child of children.reverse()) {
-		try { child.kill(); } catch { /* ignore cleanup failures */ }
+		try {
+			child.kill();
+		} catch {
+			/* ignore cleanup failures */
+		}
 	}
 	await rm(tempDir, { recursive: true, force: true });
 }
