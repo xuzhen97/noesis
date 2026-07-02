@@ -83,13 +83,7 @@ async function writeLauncher(dir, name, target) {
 
 async function packTar(sourceDir, artifactName) {
 	const artifact = posix(join(releaseDir, artifactName));
-	run("tar", [
-		"-czf",
-		artifact,
-		"-C",
-		posix(stagingDir),
-		basename(sourceDir),
-	]);
+	run("tar", ["-czf", artifact, "-C", posix(stagingDir), basename(sourceDir)]);
 	return artifactName;
 }
 

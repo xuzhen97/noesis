@@ -6,7 +6,9 @@ import { spawn, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
-function posix(p) { return p.replace(/\\/g, "/"); }
+function posix(p) {
+	return p.replace(/\\/g, "/");
+}
 
 function tarBin() {
 	if (process.platform !== "win32") return "tar";
