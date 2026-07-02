@@ -30,6 +30,7 @@ async function bundle(entry, outfile) {
 		format: "esm",
 		target: "node24",
 		sourcemap: false,
+		external: ["ws"],
 	});
 }
 
@@ -79,6 +80,18 @@ async function packTar(sourceDir, artifactName) {
 	return artifactName;
 }
 
+async function vendorWs(targetDir) {
+	const wsDir = join(root, "packages", "server", "node_modules", "ws");
+	if (!existsSync(wsDir)) throw new Error("ws not found at " + wsDir);
+	const nmDir = join(targetDir, "node_modules");
+	await mkdir(nmDir, { recursive: true });
+	run(process.platform === "win32" ? "xcopy" : "cp", [
+		process.platform === "win32" ? wsDir + "\\*" : wsDir,
+		join(nmDir, "ws"),
+		process.platform === "win32" ? "/E /I /Q" : "-r",
+	]);
+}
+
 async function packNpm(packageDir) {
 	run(
 		"npm",
@@ -104,6 +117,7 @@ await bundle(
 	join(root, "packages", "server", "src", "main.ts"),
 	join(gatewayDir, "dist", "gateway.mjs"),
 );
+await vendorWs(gatewayDir);
 await writeLauncher(gatewayDir, "noesis-gateway", "gateway.mjs");
 await writeFile(
 	join(gatewayDir, "package.json"),
@@ -125,6 +139,7 @@ await bundle(
 	join(root, "packages", "client", "src", "main.ts"),
 	join(clientDir, "dist", "client-agent.mjs"),
 );
+await vendorWs(clientDir);
 await writeLauncher(clientDir, "noesis-client-agent", "client-agent.mjs");
 await writeFile(
 	join(clientDir, "package.json"),
