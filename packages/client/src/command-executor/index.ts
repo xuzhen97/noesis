@@ -2,10 +2,12 @@ import { spawn } from "node:child_process";
 import { createNoesisError, type CommandRunPayload } from "@noesis/shared";
 import type { TaskType } from "@noesis/shared";
 
+/** Command Executor 形状（用于注入 / 测试） */
 export interface CommandExecutorShape {
 	describe(): { taskType: TaskType; execution: "not-started" };
 }
 
+/** command.run 任务执行结果 */
 export interface CommandRunResult {
 	stdout: string;
 	stderr: string;
@@ -21,6 +23,10 @@ function isAllowedDistributionCommand(payload: CommandRunPayload): boolean {
 	);
 }
 
+/**
+ * 执行 command.run 任务：仅允许白名单命令（node -e "console.log('noesis-ok')"），
+ * 通过 spawn 子进程执行并返回 stdout/stderr/exitCode。
+ */
 export async function executeCommandRunTask(
 	payload: CommandRunPayload,
 ): Promise<CommandRunResult> {

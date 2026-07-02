@@ -7,6 +7,9 @@ function readRequired(args: readonly string[], name: string): string {
 	return value;
 }
 
+/**
+ * Client Agent 入口：解析 --gateway 和 --machine-id，连接到 Gateway 等待任务派发。
+ */
 export async function runClientAgentMain(
 	args: readonly string[] = process.argv.slice(2),
 ): Promise<void> {

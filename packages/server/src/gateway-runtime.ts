@@ -15,14 +15,21 @@ import {
   type TaskType,
 } from "@noesis/shared";
 
+/** Gateway 启动选项 */
 export interface GatewayRuntimeOptions {
+  /** 监听端口 */
   port: number;
 }
 
+/** Gateway 运行时实例，包含 HTTP/WS URL 和关闭方法 */
 export interface GatewayRuntime {
+  /** HTTP URL，如 http://127.0.0.1:6375 */
   httpUrl: string;
+  /** WebSocket URL，如 ws://127.0.0.1:6375 */
   wsUrl: string;
+  /** 实际绑定的端口号 */
   port: number;
+  /** 优雅关闭 Gateway：断开所有客户端连接并停止 HTTP 服务 */
   close(): Promise<void>;
 }
 

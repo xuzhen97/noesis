@@ -10,6 +10,9 @@ function readPort(args: readonly string[]): number {
   return value;
 }
 
+/**
+ * Gateway 入口：解析命令行参数 --port，启动 Gateway，输出 JSON 就绪消息到 stdout。
+ */
 export async function runGatewayMain(
   args: readonly string[] = process.argv.slice(2),
 ): Promise<void> {

@@ -1,11 +1,13 @@
 import { NoesisClient, type RunCommandResult } from "@noesis/sdk";
 
+/** CLI 命令执行结果 */
 export interface CliResult {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
 }
 
+/** CLI 客户端接口（用于测试注入，避免真实 HTTP 调用） */
 export interface CliClient {
 	runCommandAndWait(options: {
 		machineId: string;
@@ -14,7 +16,9 @@ export interface CliClient {
 	}): Promise<RunCommandResult>;
 }
 
+/** runCli 选项 */
 export interface RunCliOptions {
+	/** 可注入的 CLI 客户端，默认使用 NoesisClient */
 	client?: CliClient;
 }
 
@@ -26,6 +30,10 @@ function readFlag(args: readonly string[], name: string): string | undefined {
 	return index === -1 ? undefined : args[index + 1];
 }
 
+/**
+ * CLI 入口：解析参数执行 task run / version / help 等命令。
+ * 通过 options.client 支持测试注入。
+ */
 export async function runCli(
 	args: readonly string[] = process.argv.slice(2),
 	options: RunCliOptions = {},

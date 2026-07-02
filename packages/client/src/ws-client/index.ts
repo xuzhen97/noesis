@@ -8,16 +8,22 @@ import type {
 } from "@noesis/shared";
 import { executeCommandRunTask } from "../command-executor/index.js";
 
+/** Client Agent WebSocket 连接形状（用于注入 / 测试） */
 export interface ClientWsShape {
 	gatewayUrl: string;
 }
 
+/** Client Agent 启动选项 */
 export interface ClientAgentOptions {
+	/** Gateway HTTP URL */
 	gatewayUrl: string;
+	/** 唯一 Machine 标识 */
 	machineId: string;
 }
 
+/** Client Agent 连接句柄 */
 export interface ClientAgentConnection {
+	/** 断开 WebSocket 连接 */
 	close(): void;
 }
 
@@ -49,6 +55,9 @@ function makeEvent(
 	return { type: "task.event", taskId, taskStatus: status, event: taskEvent };
 }
 
+/**
+ * 启动 Client Agent：通过 WebSocket 连接到 Gateway，注册 hello，等待 task.dispatch 消息并执行命令。
+ */
 export async function startClientAgent(
 	options: ClientAgentOptions,
 ): Promise<ClientAgentConnection> {
@@ -122,6 +131,7 @@ export async function startClientAgent(
 	return { close: () => ws.close() };
 }
 
+/** 创建 ClientWsShape（用于测试注入） */
 export function createClientWsShape(gatewayUrl: string): ClientWsShape {
 	return { gatewayUrl };
 }
