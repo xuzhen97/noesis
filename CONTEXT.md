@@ -12,6 +12,10 @@ _避免_：Agent gateway、remote control tool
 中央控制面，负责 API 访问、Machine 注册、Task 编排、审计和协调。
 _避免_：在描述产品角色时使用 Server
 
+**Owner Token**：
+个人单用户系统中用于进入 Gateway 控制台的拥有者访问凭证，不表示多账号或 RBAC 身份体系。
+_避免_：User account、RBAC role、Team member
+
 **Client Agent**：
 运行在目标机器上的常驻进程，向外连接 Gateway 并在本地执行操作。
 _避免_：Worker daemon、remote shell
