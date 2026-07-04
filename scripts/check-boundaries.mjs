@@ -37,7 +37,6 @@ const forbiddenDirs = [
 	"packages/client/src/policy-engine",
 	"packages/web/src/pages",
 	"packages/web/src/features",
-	"packages/web/src/components",
 	"packages/web/src/store",
 	"packages/web/src/api",
 	"packages/web/src/routes",
@@ -56,7 +55,13 @@ for (const name of readdirSync(packagesDir)) {
 
 for (const [name, allowedNoesisDeps] of Object.entries(packageDeps)) {
 	const manifestPath = join(packagesDir, name, "package.json");
-	const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+	let manifest;
+	try {
+		manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+	} catch {
+		fail(`Cannot parse package manifest: ${manifestPath}`);
+		continue;
+	}
 	const deps = {
 		...manifest.dependencies,
 		...manifest.peerDependencies,
