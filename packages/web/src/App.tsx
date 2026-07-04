@@ -7,6 +7,8 @@ import {
 	LogOut,
 	Moon,
 	Network,
+	PanelLeftClose,
+	PanelLeftOpen,
 	Search,
 	Server,
 	Settings,
@@ -24,8 +26,10 @@ import { Separator } from "@/components/ui/separator";
 import {
 	clearOwnerToken,
 	readOwnerToken,
+	readSidebarCollapsed,
 	readTheme,
 	saveOwnerToken,
+	saveSidebarCollapsed,
 	saveTheme,
 	type BrowserStorage,
 	type NoesisTheme,
@@ -90,9 +94,15 @@ function readStoredTheme(): NoesisTheme {
 	return storage === null ? "dark" : readTheme(storage);
 }
 
+function readStoredSidebarCollapsed(): boolean {
+	const storage = browserStorage();
+	return storage === null ? false : readSidebarCollapsed(storage);
+}
+
 export function App() {
-	const [ownerToken, setOwnerToken] = useState<string | null>(() => readStoredOwnerToken());
-	const [theme, setTheme] = useState<NoesisTheme>(() => readStoredTheme());
+const [ownerToken, setOwnerToken] = useState<string | null>(() => readStoredOwnerToken());
+const [theme, setTheme] = useState<NoesisTheme>(() => readStoredTheme());
+const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStoredSidebarCollapsed());
 
 	useEffect(() => {
 		document.documentElement.classList.toggle("dark", theme === "dark");
@@ -129,6 +139,19 @@ export function App() {
 		setTheme((current) => (current === "dark" ? "light" : "dark"));
 	}
 
+	function toggleSidebarCollapsed() {
+		setSidebarCollapsed((current) => {
+			const next = !current;
+			const storage = browserStorage();
+
+			if (storage !== null) {
+				saveSidebarCollapsed(storage, next);
+			}
+
+			return next;
+		});
+	}
+
 	return (
 		<HashRouter>
 			<div className="noesis-background">
@@ -137,8 +160,10 @@ export function App() {
 				) : (
 					<ConsoleShell
 						onLogout={handleLogout}
+						onToggleSidebarCollapsed={toggleSidebarCollapsed}
 						onToggleTheme={toggleTheme}
 						ownerToken={ownerToken}
+						sidebarCollapsed={sidebarCollapsed}
 						theme={theme}
 					/>
 				)}
@@ -261,13 +286,17 @@ function LoginPage({
 
 function ConsoleShell({
 	onLogout,
+	onToggleSidebarCollapsed,
 	onToggleTheme,
 	ownerToken,
+	sidebarCollapsed,
 	theme,
 }: {
 	onLogout: () => void;
+	onToggleSidebarCollapsed: () => void;
 	onToggleTheme: () => void;
 	ownerToken: string;
+	sidebarCollapsed: boolean;
 	theme: NoesisTheme;
 }) {
 	const location = useLocation();
@@ -283,26 +312,42 @@ function ConsoleShell({
 	}
 
 	return (
-		<div className="grid min-h-dvh lg:grid-cols-[240px_minmax(0,1fr)]">
-			<aside className="hidden border-r border-border/70 bg-card/40 p-4 backdrop-blur-xl lg:block">
+		<div className={sidebarCollapsed ? "noesis-shell noesis-shell-collapsed" : "noesis-shell"}>
+			<aside
+				className={sidebarCollapsed ? "noesis-sidebar noesis-sidebar-collapsed" : "noesis-sidebar"}
+				data-collapsed={sidebarCollapsed}
+			>
 				<div className="mb-8 flex min-h-11 items-center gap-3 px-2">
-					<div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+					<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/10">
 						<Network className="size-5" aria-hidden="true" />
 					</div>
-					<div>
-						<p className="text-sm font-semibold leading-none">Noesis 灵识</p>
-						<p className="mt-1 text-xs text-muted-foreground">Human-AI Workspace</p>
+					<div className="noesis-sidebar-label min-w-0">
+						<p className="truncate text-sm font-semibold leading-none">Noesis 灵识</p>
+						<p className="mt-1 truncate text-xs text-muted-foreground">Human-AI Workspace</p>
 					</div>
 				</div>
 
 				<nav aria-label="主导航" className="space-y-2">
 					{routeItems.map((item) => (
-						<NavLink className="noesis-nav-link" key={item.path} to={item.path}>
-							<item.icon className="size-4" aria-hidden="true" />
-							<span>{item.label}</span>
+						<NavLink className="noesis-nav-link" key={item.path} title={item.label} to={item.path}>
+							<item.icon className="size-4 shrink-0" aria-hidden="true" />
+							<span className="noesis-sidebar-label">{item.label}</span>
 						</NavLink>
 					))}
 				</nav>
+
+				<div className="mt-auto pt-4">
+					<Button
+						aria-label={sidebarCollapsed ? "展开菜单" : "收起菜单"}
+						className="noesis-sidebar-toggle"
+						onClick={onToggleSidebarCollapsed}
+						title={sidebarCollapsed ? "展开菜单" : "收起菜单"}
+						variant="outline"
+					>
+						{sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+						<span className="noesis-sidebar-label">收起菜单</span>
+					</Button>
+				</div>
 			</aside>
 
 			<div className="flex min-w-0 flex-col">
