@@ -23,7 +23,21 @@ export interface RunCliOptions {
 }
 
 const help =
-	"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json -- node -e \"console.log('noesis-ok')\"\n";
+	"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n";
+
+function readOwnerToken(args: readonly string[]): string {
+	const flagIndex = args.indexOf("--owner-token");
+	if (flagIndex !== -1) {
+		const value = args[flagIndex + 1];
+		if (value === undefined) throw new Error("--owner-token requires a value");
+		return value.trim();
+	}
+	const env = process.env.NOESIS_OWNER_TOKEN?.trim();
+	if (env && env.length > 0) return env;
+	throw new Error(
+		"Owner Token is required for task run (--owner-token or NOESIS_OWNER_TOKEN)",
+	);
+}
 
 function readFlag(args: readonly string[], name: string): string | undefined {
 	const index = args.indexOf(name);
@@ -72,11 +86,24 @@ export async function runCli(
 				exitCode: 1,
 				stdout: "",
 				stderr:
-					"Usage: noesis task run --gateway <url> --machine <id> --json -- node -e \"console.log('noesis-ok')\"\n",
+					"Usage: noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n",
 			};
 		}
 
-		const client = options.client ?? new NoesisClient({ baseUrl: gateway });
+		// ownerToken: 必须在 HTTP 请求前校验
+		let ownerToken: string;
+		try {
+			ownerToken = readOwnerToken(args);
+		} catch (e) {
+			return {
+				exitCode: 1,
+				stdout: "",
+				stderr: (e as Error).message + "\n",
+			};
+		}
+
+		const client =
+			options.client ?? new NoesisClient({ baseUrl: gateway, ownerToken });
 		const result = await client.runCommandAndWait({
 			machineId,
 			command: ["node", "-e", "console.log('noesis-ok')"],

@@ -14,7 +14,7 @@ describe("Noesis CLI shell", () => {
 		await expect(runCli(["--help"])).resolves.toEqual({
 			exitCode: 0,
 			stdout:
-				"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json -- node -e \"console.log('noesis-ok')\"\n",
+				"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n",
 			stderr: "",
 		});
 	});
@@ -37,6 +37,8 @@ describe("Noesis CLI shell", () => {
 					"http://127.0.0.1:8080",
 					"--machine",
 					"local-dev-machine",
+					"--owner-token",
+					"test-token",
 					"--json",
 					"--",
 					"node",
@@ -55,5 +57,63 @@ describe("Noesis CLI shell", () => {
 				}) + "\n",
 			stderr: "",
 		});
+	});
+
+	it("fails task run without owner token", async () => {
+		await expect(
+			runCli([
+				"task",
+				"run",
+				"--gateway",
+				"http://127.0.0.1:8080",
+				"--machine",
+				"local-dev-machine",
+				"--json",
+				"--",
+				"node",
+				"-e",
+				"console.log('noesis-ok')",
+			]),
+		).resolves.toEqual({
+			exitCode: 1,
+			stdout: "",
+			stderr:
+				"Owner Token is required for task run (--owner-token or NOESIS_OWNER_TOKEN)\n",
+		});
+	});
+
+	it("reads owner token from NOESIS_OWNER_TOKEN env", async () => {
+		process.env.NOESIS_OWNER_TOKEN = "env-token";
+		try {
+			await expect(
+				runCli(
+					[
+						"task",
+						"run",
+						"--gateway",
+						"http://127.0.0.1:8080",
+						"--machine",
+						"local-dev-machine",
+						"--json",
+						"--",
+						"node",
+						"-e",
+						"console.log('noesis-ok')",
+					],
+					{ client: fakeClient },
+				),
+			).resolves.toEqual({
+				exitCode: 0,
+				stdout:
+					JSON.stringify({
+						taskId: "task_1",
+						status: "succeeded",
+						stdout: "noesis-ok\n",
+					}) + "\n",
+				stderr: "",
+			});
+		} finally {
+			delete process.env.NOESIS_OWNER_TOKEN;
+		}
 	});
 });
