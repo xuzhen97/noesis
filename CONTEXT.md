@@ -13,8 +13,8 @@ _避免_：Agent gateway、remote control tool
 _避免_：在描述产品角色时使用 Server
 
 **Owner Token**：
-个人单用户系统中用于进入 Gateway 控制台的拥有者访问凭证，不表示多账号或 RBAC 身份体系。
-_避免_：User account、RBAC role、Team member
+个人单用户系统中用于访问 Gateway 控制面（Web 控制台、SDK、CLI）的拥有者访问凭证，不表示多账号或 RBAC 身份体系。
+_避免_：User account、Password account、RBAC role、Team member
 
 **Client Agent**：
 运行在目标机器上的常驻进程，向外连接 Gateway 并在本地执行操作。
