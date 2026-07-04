@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && vite build",
-    "test": "pnpm build"
+    "test": "pnpm build && vitest run src/session.test.ts"
   },
   "dependencies": {
     "@noesis/shared": "workspace:*",
