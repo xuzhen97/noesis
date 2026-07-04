@@ -19,6 +19,8 @@ export interface ClientAgentOptions {
 	gatewayUrl: string;
 	/** 唯一 Machine 标识 */
 	machineId: string;
+	/** Owner Token：Gateway 认证凭证 */
+	ownerToken: string;
 }
 
 /** Client Agent 连接句柄 */
@@ -56,12 +58,15 @@ function makeEvent(
 }
 
 /**
- * 启动 Client Agent：通过 WebSocket 连接到 Gateway，注册 hello，等待 task.dispatch 消息并执行命令。
+ * 启动 Client Agent：通过 WebSocket 连接到 Gateway，注册 hello，等待 client.accepted 后再开始处理任务派发。
  */
 export async function startClientAgent(
 	options: ClientAgentOptions,
 ): Promise<ClientAgentConnection> {
-	const ws = new WebSocket(toWsUrl(options.gatewayUrl));
+	const ws = new WebSocket(toWsUrl(options.gatewayUrl), {
+		headers: { Authorization: `Bearer ${options.ownerToken}` },
+	});
+
 	await new Promise<void>((resolve, reject) => {
 		ws.once("open", () => {
 			ws.send(
@@ -75,6 +80,27 @@ export async function startClientAgent(
 		ws.once("error", reject);
 	});
 
+	// 等 client.accepted
+	await new Promise<void>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error("Client Agent not accepted within 5s")),
+			5000,
+		);
+		ws.on("message", (raw) => {
+			try {
+				const msg = JSON.parse(String(raw)) as GatewayToClientMessage;
+				if (msg.type === "client.accepted") {
+					clearTimeout(timer);
+					resolve();
+				}
+			} catch {
+				// 忽略非 JSON 消息
+			}
+		});
+	});
+
+	// client.accepted 之后，切换为任务派发处理
+	ws.removeAllListeners("message");
 	ws.on("message", (raw) => {
 		void (async () => {
 			let message: GatewayToClientMessage;

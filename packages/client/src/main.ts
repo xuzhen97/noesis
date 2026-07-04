@@ -7,15 +7,31 @@ function readRequired(args: readonly string[], name: string): string {
 	return value;
 }
 
+/** 读取 Owner Token：--owner-token 标志优先于 NOESIS_OWNER_TOKEN 环境变量 */
+function readOwnerToken(args: readonly string[]): string {
+	const flagIndex = args.indexOf("--owner-token");
+	if (flagIndex !== -1) {
+		const value = args[flagIndex + 1];
+		if (value === undefined) throw new Error("--owner-token requires a value");
+		return value.trim();
+	}
+	const env = process.env.NOESIS_OWNER_TOKEN?.trim();
+	if (env && env.length > 0) return env;
+	throw new Error(
+		"Owner Token is required (--owner-token or NOESIS_OWNER_TOKEN)",
+	);
+}
+
 /**
- * Client Agent 入口：解析 --gateway 和 --machine-id，连接到 Gateway 等待任务派发。
+ * Client Agent 入口：解析 --gateway、--machine-id 和 --owner-token，连接到 Gateway 等待任务派发。
  */
 export async function runClientAgentMain(
 	args: readonly string[] = process.argv.slice(2),
 ): Promise<void> {
 	const gatewayUrl = readRequired(args, "--gateway");
 	const machineId = readRequired(args, "--machine-id");
-	await startClientAgent({ gatewayUrl, machineId });
+	const ownerToken = readOwnerToken(args);
+	await startClientAgent({ gatewayUrl, machineId, ownerToken });
 	console.log(
 		JSON.stringify({
 			type: "NOESIS_CLIENT_AGENT_READY",
