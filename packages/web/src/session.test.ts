@@ -3,9 +3,12 @@ import {
 	clearOwnerToken,
 	ownerTokenKey,
 	readOwnerToken,
+	readSidebarCollapsed,
 	readTheme,
 	saveOwnerToken,
+	saveSidebarCollapsed,
 	saveTheme,
+	sidebarCollapsedKey,
 	themeKey,
 	type BrowserStorage,
 } from "./session.js";
@@ -70,6 +73,41 @@ describe("Owner Token storage", () => {
 		expect(saveOwnerToken(storage, "owner-token")).toBe(false);
 		expect(readOwnerToken(storage)).toBeNull();
 		expect(clearOwnerToken(storage)).toBe(false);
+	});
+});
+
+describe("sidebar collapsed storage", () => {
+	it("defaults to expanded when no preference is stored", () => {
+		const storage = new MemoryStorage();
+
+		expect(readSidebarCollapsed(storage)).toBe(false);
+	});
+
+	it("stores collapsed and expanded preferences", () => {
+		const storage = new MemoryStorage();
+
+		expect(saveSidebarCollapsed(storage, true)).toBe(true);
+		expect(storage.getItem(sidebarCollapsedKey)).toBe("true");
+		expect(readSidebarCollapsed(storage)).toBe(true);
+
+		expect(saveSidebarCollapsed(storage, false)).toBe(true);
+		expect(storage.getItem(sidebarCollapsedKey)).toBe("false");
+		expect(readSidebarCollapsed(storage)).toBe(false);
+	});
+
+	it("treats unknown values as expanded", () => {
+		const storage = new MemoryStorage();
+		storage.setItem(sidebarCollapsedKey, "narrow");
+
+		expect(readSidebarCollapsed(storage)).toBe(false);
+	});
+
+	it("falls back to expanded when storage throws", () => {
+		const storage = new MemoryStorage();
+		storage.shouldThrow = true;
+
+		expect(readSidebarCollapsed(storage)).toBe(false);
+		expect(saveSidebarCollapsed(storage, true)).toBe(false);
 	});
 });
 

@@ -1,5 +1,6 @@
 export const ownerTokenKey = "noesis.ownerToken";
 export const themeKey = "noesis.theme";
+export const sidebarCollapsedKey = "noesis.sidebarCollapsed";
 
 export type NoesisTheme = "dark" | "light";
 
@@ -57,6 +58,26 @@ export function readTheme(
 export function saveTheme(storage: Pick<BrowserStorage, "setItem">, theme: NoesisTheme): boolean {
 	try {
 		storage.setItem(themeKey, theme);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function readSidebarCollapsed(storage: Pick<BrowserStorage, "getItem">): boolean {
+	try {
+		return storage.getItem(sidebarCollapsedKey) === "true";
+	} catch {
+		return false;
+	}
+}
+
+export function saveSidebarCollapsed(
+	storage: Pick<BrowserStorage, "setItem">,
+	collapsed: boolean,
+): boolean {
+	try {
+		storage.setItem(sidebarCollapsedKey, collapsed ? "true" : "false");
 		return true;
 	} catch {
 		return false;
