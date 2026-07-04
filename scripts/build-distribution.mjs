@@ -119,6 +119,19 @@ await bundle(
 	join(gatewayDir, "dist", "gateway.mjs"),
 );
 await vendorWs(gatewayDir);
+
+// Copy web/dist into gateway artifact
+const webDist = join(root, "packages", "web", "dist");
+if (existsSync(webDist)) {
+	const webDest = join(gatewayDir, "web");
+	await mkdir(webDest, { recursive: true });
+	run(process.platform === "win32" ? "xcopy" : "cp", [
+		process.platform === "win32" ? webDist + "\\*" : webDist,
+		webDest,
+		...(process.platform === "win32" ? ["/E", "/I", "/Q"] : ["-r"]),
+	]);
+}
+
 await writeLauncher(gatewayDir, "noesis-gateway", "gateway.mjs");
 await writeFile(
 	join(gatewayDir, "package.json"),

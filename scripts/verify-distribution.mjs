@@ -144,6 +144,8 @@ try {
 	const gateway = startNode(join(gatewayDir, "dist", "gateway.mjs"), [
 		"--port",
 		"0",
+		"--owner-token",
+		"dev-owner-token",
 	]);
 	children.push(gateway);
 	const ready = await waitForLine(gateway, "NOESIS_GATEWAY_READY");
@@ -154,6 +156,8 @@ try {
 		ready.httpUrl,
 		"--machine-id",
 		"local-dev-machine",
+		"--owner-token",
+		"dev-owner-token",
 	]);
 	children.push(client);
 	await waitForLine(client, "NOESIS_CLIENT_AGENT_READY");
@@ -193,6 +197,8 @@ try {
 		ready.httpUrl,
 		"--machine",
 		"local-dev-machine",
+		"--owner-token",
+		"dev-owner-token",
 		"--json",
 		"--",
 		"node",

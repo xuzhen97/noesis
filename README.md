@@ -76,11 +76,11 @@ npm install ./path/to/noesis-sdk-0.0.0.tgz
 **步骤 4：启动 Gateway**
 
 ```bash
-node /tmp/noesis-test/noesis-gateway-0.0.0/dist/gateway.mjs --port 6375
+node /tmp/noesis-test/noesis-gateway-0.0.0/dist/gateway.mjs --port 6375 --owner-token "dev-owner-token"
 ```
 
 启动后会在 stdout 输出一条 JSON 格式就绪信息：
-`{"noesisGatewayReady":true,"pid":...,"httpUrl":"http://127.0.0.1:6375"}`
+`{"type":"NOESIS_GATEWAY_READY","httpUrl":"http://127.0.0.1:6375",...}`
 
 **步骤 5：启动 Client Agent**
 
@@ -89,7 +89,8 @@ node /tmp/noesis-test/noesis-gateway-0.0.0/dist/gateway.mjs --port 6375
 ```bash
 node /tmp/noesis-test/noesis-client-agent-0.0.0/dist/agent.mjs \
   --gateway http://127.0.0.1:6375 \
-  --machine my-dev-machine
+  --machine my-dev-machine \
+  --owner-token "dev-owner-token"
 ```
 
 Client Agent 会通过 WebSocket 连接到 Gateway 并等待 Task 派发。
@@ -100,6 +101,7 @@ Client Agent 会通过 WebSocket 连接到 Gateway 并等待 Task 派发。
 noesis task run \
   --gateway http://127.0.0.1:6375 \
   --machine my-dev-machine \
+  --owner-token "dev-owner-token" \
   --json \
   -- node -e "console.log('noesis-ok')"
 ```
@@ -117,6 +119,8 @@ noesis task run \
   ]
 }
 ```
+
+> 生产使用建议将 `dev-owner-token` 替换为高熵随机串，例如：`openssl rand -hex 32`。
 
 **步骤 7：清理**
 
