@@ -4,6 +4,8 @@ import {
 	type ServerResponse,
 } from "node:http";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { extname, normalize, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import {
 	createNoesisError,
@@ -12,17 +14,23 @@ import {
 	type ClientToGatewayMessage,
 	type GatewayToClientMessage,
 	type GatewayHealth,
+	type GatewayInfo,
 	type Machine,
 	type Task,
 	type TaskEvent,
 	type TaskStatus,
 	type TaskType,
 } from "@noesis/shared";
+import { readBearerToken, ownerTokenEquals } from "./auth.js";
 
 /** Gateway 启动选项 */
 export interface GatewayRuntimeOptions {
 	/** 监听端口 */
 	port: number;
+	/** Owner Token：Gateway 控制面凭证 */
+	ownerToken: string;
+	/** Web 静态文件目录（可选） */
+	webDir?: string;
 }
 
 /** Gateway 运行时实例，包含 HTTP/WS URL 和关闭方法 */
@@ -158,6 +166,32 @@ export async function startGateway(
 		async (request: IncomingMessage, response: ServerResponse) => {
 			const url = new URL(request.url ?? "/", "http://127.0.0.1");
 
+			// 静态 Web 文件和 /api/health 公开；其余接口需要 Owner Token
+			const isPublic =
+				(request.method === "GET" && url.pathname === "/api/health") ||
+				(options.webDir !== undefined &&
+					request.method === "GET" &&
+					!url.pathname.startsWith("/api"));
+			if (!isPublic) {
+				const bearer = readBearerToken(request.headers.authorization);
+				if (bearer === null) {
+					json(
+						response,
+						401,
+						fail("OWNER_TOKEN_REQUIRED", "Owner Token is required"),
+					);
+					return;
+				}
+				if (!ownerTokenEquals(options.ownerToken, bearer)) {
+					json(
+						response,
+						401,
+						fail("INVALID_OWNER_TOKEN", "Invalid Owner Token"),
+					);
+					return;
+				}
+			}
+
 			if (request.method === "GET" && url.pathname === "/api/health") {
 				json<GatewayHealth>(
 					response,
@@ -166,6 +200,21 @@ export async function startGateway(
 						ok: true,
 						service: "gateway",
 						protocolVersion,
+					}),
+				);
+				return;
+			}
+
+			if (request.method === "GET" && url.pathname === "/api/gateway/info") {
+				json<GatewayInfo>(
+					response,
+					200,
+					ok({
+						name: "Noesis Gateway",
+						service: "gateway",
+						protocolVersion,
+						auth: { mode: "owner-token" },
+						capabilities: ["tasks.command.run", "machines.client-agent"],
 					}),
 				);
 				return;
@@ -228,6 +277,45 @@ export async function startGateway(
 				return;
 			}
 
+			// 静态 Web 文件
+			if (
+				options.webDir !== undefined &&
+				request.method === "GET" &&
+				!url.pathname.startsWith("/api")
+			) {
+				const filePath = url.pathname === "/" ? "/index.html" : url.pathname;
+				// 防路径穿越
+				const resolved = resolve(
+					options.webDir,
+					"." + normalize(filePath),
+				);
+				if (!resolved.startsWith(options.webDir)) {
+					json(response, 403, fail("BAD_REQUEST", "Forbidden"));
+					return;
+				}
+				try {
+					const content = await readFile(resolved);
+					const mime: Record<string, string> = {
+						".html": "text/html; charset=utf-8",
+						".js": "application/javascript; charset=utf-8",
+						".css": "text/css; charset=utf-8",
+						".svg": "image/svg+xml",
+						".png": "image/png",
+						".ico": "image/x-icon",
+						".json": "application/json; charset=utf-8",
+					};
+					const ext = extname(filePath);
+					response.writeHead(200, {
+						"content-type": mime[ext] ?? "application/octet-stream",
+					});
+					response.end(content);
+					return;
+				} catch {
+					json(response, 404, fail("BAD_REQUEST", "Not found"));
+					return;
+				}
+			}
+
 			json(response, 404, fail("BAD_REQUEST", "Route not found"));
 		},
 	);
@@ -236,6 +324,15 @@ export async function startGateway(
 	server.on("upgrade", (request, socket, head) => {
 		const url = new URL(request.url ?? "/", "http://127.0.0.1");
 		if (url.pathname !== "/ws/client") {
+			socket.destroy();
+			return;
+		}
+		const bearer = readBearerToken(request.headers.authorization);
+		if (
+			bearer === null ||
+			!ownerTokenEquals(options.ownerToken, bearer)
+		) {
+			socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
 			socket.destroy();
 			return;
 		}
