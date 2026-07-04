@@ -26,6 +26,8 @@ import {
 	useLocation,
 	useNavigate,
 } from "react-router-dom";
+import type { GatewayInfo } from "@noesis/shared";
+import { getGatewayInfo, type GatewayApiError } from "./gateway-api.js";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -133,14 +135,42 @@ function readStoredSidebarCollapsed(): boolean {
 	return storage === null ? false : readSidebarCollapsed(storage);
 }
 
+type AuthState =
+	| { phase: "checking" }
+	| { phase: "login" }
+	| { phase: "authenticated"; token: string; info: GatewayInfo };
+
 export function App() {
-	const [ownerToken, setOwnerToken] = useState<string | null>(() =>
-		readStoredOwnerToken(),
-	);
+	const [auth, setAuth] = useState<AuthState>(() => {
+		const stored = readStoredOwnerToken();
+		return stored !== null ? { phase: "checking" } : { phase: "login" };
+	});
 	const [theme, setTheme] = useState<NoesisTheme>(() => readStoredTheme());
 	const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
 		readStoredSidebarCollapsed(),
 	);
+
+	// 验证存储的 token
+	useEffect(() => {
+		if (auth.phase !== "checking") return;
+		const stored = readStoredOwnerToken();
+		if (stored === null) {
+			setAuth({ phase: "login" });
+			return;
+		}
+		let cancelled = false;
+		getGatewayInfo(stored).then((result) => {
+			if (cancelled) return;
+			if ("kind" in result) {
+				const storage = browserStorage();
+				if (storage !== null) clearOwnerToken(storage);
+				setAuth({ phase: "login" });
+				return;
+			}
+			setAuth({ phase: "authenticated", token: stored, info: result });
+		});
+		return () => { cancelled = true; };
+	}, [auth.phase]);
 
 	useEffect(() => {
 		document.documentElement.classList.toggle("dark", theme === "dark");
@@ -152,15 +182,18 @@ export function App() {
 		}
 	}, [theme]);
 
-	function handleLogin(token: string): boolean {
+	async function handleLogin(token: string): Promise<GatewayApiError | null> {
+		const result = await getGatewayInfo(token);
+		if ("kind" in result) return result;
 		const storage = browserStorage();
-
-		if (storage === null || !saveOwnerToken(storage, token)) {
-			return false;
+		if (storage === null) {
+			return { kind: "server-error", message: "本地存储不可用" };
 		}
-
-		setOwnerToken(token.trim());
-		return true;
+		if (!saveOwnerToken(storage, token)) {
+			return { kind: "server-error", message: "无法保存 Owner Token" };
+		}
+		setAuth({ phase: "authenticated", token: token.trim(), info: result });
+		return null;
 	}
 
 	function handleLogout() {
@@ -170,7 +203,7 @@ export function App() {
 			clearOwnerToken(storage);
 		}
 
-		setOwnerToken(null);
+		setAuth({ phase: "login" });
 	}
 
 	function toggleTheme() {
@@ -193,7 +226,9 @@ export function App() {
 	return (
 		<HashRouter>
 			<div className="noesis-background">
-				{ownerToken === null ? (
+				{auth.phase === "checking" ? (
+					<CheckingPage />
+				) : auth.phase === "login" ? (
 					<LoginPage
 						onLogin={handleLogin}
 						onToggleTheme={toggleTheme}
@@ -201,10 +236,10 @@ export function App() {
 					/>
 				) : (
 					<ConsoleShell
+						gatewayInfo={auth.info}
 						onLogout={handleLogout}
 						onToggleSidebarCollapsed={toggleSidebarCollapsed}
 						onToggleTheme={toggleTheme}
-						ownerToken={ownerToken}
 						sidebarCollapsed={sidebarCollapsed}
 						theme={theme}
 					/>
@@ -214,20 +249,40 @@ export function App() {
 	);
 }
 
+function CheckingPage() {
+	return (
+		<main className="flex min-h-dvh items-center justify-center px-4 py-10">
+			<Card className="noesis-panel max-w-md text-center">
+				<CardHeader>
+					<Activity
+						aria-hidden="true"
+						className="mx-auto size-8 animate-spin text-primary"
+					/>
+					<CardTitle className="pt-4">正在连接 Gateway…</CardTitle>
+					<CardDescription>
+						正在验证本地保存的 Owner Token。
+					</CardDescription>
+				</CardHeader>
+			</Card>
+		</main>
+	);
+}
+
 function LoginPage({
 	onLogin,
 	onToggleTheme,
 	theme,
 }: {
-	onLogin: (token: string) => boolean;
+	onLogin: (token: string) => Promise<GatewayApiError | null>;
 	onToggleTheme: () => void;
 	theme: NoesisTheme;
 }) {
 	const navigate = useNavigate();
 	const [ownerToken, setOwnerToken] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [submitting, setSubmitting] = useState(false);
 
-	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 
 		const normalized = ownerToken.trim();
@@ -236,13 +291,22 @@ function LoginPage({
 			return;
 		}
 
-		if (!onLogin(normalized)) {
-			setError("无法保存 Owner Token，请检查浏览器本地存储权限。");
+		setSubmitting(true);
+		setError(null);
+		const result = await onLogin(normalized);
+		setSubmitting(false);
+
+		if (result === null) {
+			navigate("/dashboard", { replace: true });
 			return;
 		}
-
-		setError(null);
-		navigate("/dashboard", { replace: true });
+		if (result.kind === "unauthorized") {
+			setError("Owner Token 无效。");
+		} else if (result.kind === "unreachable") {
+			setError("无法连接 Gateway。");
+		} else {
+			setError("Gateway 暂时不可用。");
+		}
 	}
 
 	return (
@@ -334,8 +398,8 @@ function LoginPage({
 								)}
 							</div>
 
-							<Button className="w-full" type="submit">
-								进入控制台
+							<Button className="w-full" disabled={submitting} type="submit">
+								{submitting ? "正在验证…" : "进入控制台"}
 							</Button>
 						</form>
 					</CardContent>
@@ -346,17 +410,17 @@ function LoginPage({
 }
 
 function ConsoleShell({
+	gatewayInfo,
 	onLogout,
 	onToggleSidebarCollapsed,
 	onToggleTheme,
-	ownerToken,
 	sidebarCollapsed,
 	theme,
 }: {
+	gatewayInfo: GatewayInfo;
 	onLogout: () => void;
 	onToggleSidebarCollapsed: () => void;
 	onToggleTheme: () => void;
-	ownerToken: string;
 	sidebarCollapsed: boolean;
 	theme: NoesisTheme;
 }) {
@@ -505,17 +569,20 @@ function ConsoleShell({
 					<Routes>
 						<Route element={<Navigate replace to="/dashboard" />} index />
 						<Route
-							element={<DashboardPage ownerToken={ownerToken} />}
+							element={<DashboardPage gatewayInfo={gatewayInfo} />}
 							path="/dashboard"
 						/>
 						<Route element={<MachinesPage />} path="/machines" />
 						<Route element={<TasksPage />} path="/tasks" />
-						<Route
-							element={
-								<SettingsPage onLogout={handleLogout} ownerToken={ownerToken} />
-							}
-							path="/settings"
-						/>
+					<Route
+						element={
+							<SettingsPage
+								gatewayInfo={gatewayInfo}
+								onLogout={handleLogout}
+							/>
+						}
+						path="/settings"
+					/>
 						<Route element={<Navigate replace to="/dashboard" />} path="*" />
 					</Routes>
 				</main>
@@ -524,7 +591,7 @@ function ConsoleShell({
 	);
 }
 
-function DashboardPage({ ownerToken }: { ownerToken: string }) {
+function DashboardPage({ gatewayInfo }: { gatewayInfo: GatewayInfo }) {
 	return (
 		<div className="space-y-6">
 			<PageHeading
@@ -560,20 +627,28 @@ function DashboardPage({ ownerToken }: { ownerToken: string }) {
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
-						本地门禁状态
+						控制面状态
 					</CardTitle>
 					<CardDescription>
-						Owner Token 已保存在当前浏览器。本阶段不做服务端校验。
+						Gateway 已连接并完成 Owner Token 认证。
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="grid gap-4 md:grid-cols-3">
 					<StatusChip
 						icon={ShieldCheck}
-						label="Owner Token"
-						value={ownerToken.length > 0 ? "已保存" : "未保存"}
+						label="认证模式"
+						value={gatewayInfo.auth.mode}
 					/>
-					<StatusChip icon={Network} label="Gateway API" value="待接入" />
-					<StatusChip icon={Bot} label="Task Event" value="待创建" />
+					<StatusChip
+						icon={Network}
+						label="Gateway"
+						value={gatewayInfo.name}
+					/>
+					<StatusChip
+						icon={Bot}
+						label="协议版本"
+						value={gatewayInfo.protocolVersion}
+					/>
 				</CardContent>
 			</Card>
 		</div>
@@ -605,31 +680,53 @@ function TasksPage() {
 }
 
 function SettingsPage({
+	gatewayInfo,
 	onLogout,
-	ownerToken,
 }: {
+	gatewayInfo: GatewayInfo;
 	onLogout: () => void;
-	ownerToken: string;
 }) {
 	return (
 		<div className="space-y-6">
 			<PageHeading
-				description="本阶段只暴露本地门禁状态和退出入口。"
+				description="Gateway 基础信息和本地认证状态。"
 				title="设置"
 			/>
 			<Card className="noesis-panel max-w-2xl">
 				<CardHeader>
 					<CardTitle>Owner Token</CardTitle>
 					<CardDescription>
-						Token 已保存，但不会在界面显示明文。
+						已认证，Token 不会在界面显示明文。
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="rounded-lg border border-border/70 bg-secondary/40 p-4 text-sm text-muted-foreground">
 						当前状态：
-						<span className="font-medium text-foreground">
-							{ownerToken.length > 0 ? "已保存" : "未保存"}
-						</span>
+						<span className="font-medium text-foreground">已认证</span>
+					</div>
+					<div className="grid gap-3 text-sm md:grid-cols-2">
+						<div>
+							<span className="text-muted-foreground">Gateway：</span>
+							<span className="font-medium">{window.location.origin}</span>
+						</div>
+						<div>
+							<span className="text-muted-foreground">协议版本：</span>
+							<span className="font-medium">
+								{gatewayInfo.protocolVersion}
+							</span>
+						</div>
+						<div>
+							<span className="text-muted-foreground">认证模式：</span>
+							<span className="font-medium">
+								{gatewayInfo.auth.mode}
+							</span>
+						</div>
+						<div>
+							<span className="text-muted-foreground">能力：</span>
+							<span className="font-medium">
+								{gatewayInfo.capabilities.join("，")}
+							</span>
+						</div>
 					</div>
 					<Separator />
 					<Button onClick={onLogout} variant="destructive">
