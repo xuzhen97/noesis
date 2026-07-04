@@ -26,6 +26,7 @@
 - TypeScript 使用 ESM + strict；NodeNext 相对导入保留 `.js` 后缀。
 - 先复用现有模块和 Node 标准库；不要提前加 interface、factory、配置层或空目录。
 - 错误对象保持稳定 `code`、合适 `statusCode`、安全 message；不要泄露 stack、密钥、临时代码或文件内容。
+- **git commit** 提交的内容使用简体中文。
 
 ## Architecture boundaries (架构边界)
 
