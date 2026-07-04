@@ -17,9 +17,23 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { HashRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import {
+	HashRouter,
+	Navigate,
+	NavLink,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -43,10 +57,30 @@ type RouteItem = {
 };
 
 const routeItems: RouteItem[] = [
-	{ path: "/dashboard", label: "仪表盘", description: "P0 控制闭环概览", icon: Activity },
-	{ path: "/machines", label: "机器", description: "Client Agent 接入状态", icon: Server },
-	{ path: "/tasks", label: "任务", description: "Task 与 Task Event 状态", icon: Bot },
-	{ path: "/settings", label: "设置", description: "本地门禁与主题", icon: Settings },
+	{
+		path: "/dashboard",
+		label: "仪表盘",
+		description: "P0 控制闭环概览",
+		icon: Activity,
+	},
+	{
+		path: "/machines",
+		label: "机器",
+		description: "Client Agent 接入状态",
+		icon: Server,
+	},
+	{
+		path: "/tasks",
+		label: "任务",
+		description: "Task 与 Task Event 状态",
+		icon: Bot,
+	},
+	{
+		path: "/settings",
+		label: "设置",
+		description: "本地门禁与主题",
+		icon: Settings,
+	},
 ];
 
 const statusCards = [
@@ -100,9 +134,13 @@ function readStoredSidebarCollapsed(): boolean {
 }
 
 export function App() {
-const [ownerToken, setOwnerToken] = useState<string | null>(() => readStoredOwnerToken());
-const [theme, setTheme] = useState<NoesisTheme>(() => readStoredTheme());
-const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStoredSidebarCollapsed());
+	const [ownerToken, setOwnerToken] = useState<string | null>(() =>
+		readStoredOwnerToken(),
+	);
+	const [theme, setTheme] = useState<NoesisTheme>(() => readStoredTheme());
+	const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
+		readStoredSidebarCollapsed(),
+	);
 
 	useEffect(() => {
 		document.documentElement.classList.toggle("dark", theme === "dark");
@@ -156,7 +194,11 @@ const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStor
 		<HashRouter>
 			<div className="noesis-background">
 				{ownerToken === null ? (
-					<LoginPage onLogin={handleLogin} onToggleTheme={toggleTheme} theme={theme} />
+					<LoginPage
+						onLogin={handleLogin}
+						onToggleTheme={toggleTheme}
+						theme={theme}
+					/>
 				) : (
 					<ConsoleShell
 						onLogout={handleLogout}
@@ -213,12 +255,15 @@ function LoginPage({
 					</div>
 
 					<div className="space-y-4">
-						<p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">Noesis 灵识</p>
+						<p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">
+							Noesis 灵识
+						</p>
 						<h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
 							连接 Gateway、Machine 与 Task Event 的 AI 控制台
 						</h1>
 						<p className="max-w-xl text-base leading-8 text-muted-foreground">
-							使用 Owner Token 进入个人工作台。本阶段只做本地门禁，不创建多账号体系，也不暴露长期凭证明文。
+							使用 Owner Token
+							进入个人工作台。本阶段只做本地门禁，不创建多账号体系，也不暴露长期凭证明文。
 						</p>
 					</div>
 
@@ -235,15 +280,23 @@ function LoginPage({
 						<div className="flex items-center justify-between gap-3">
 							<div>
 								<CardTitle className="text-2xl">登录 Noesis</CardTitle>
-								<CardDescription className="mt-2">输入 Owner Token 进入控制台。</CardDescription>
+								<CardDescription className="mt-2">
+									输入 Owner Token 进入控制台。
+								</CardDescription>
 							</div>
 							<Button
-								aria-label={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
+								aria-label={
+									theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"
+								}
 								onClick={onToggleTheme}
 								size="icon"
 								variant="outline"
 							>
-								{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+								{theme === "dark" ? (
+									<Sun aria-hidden="true" />
+								) : (
+									<Moon aria-hidden="true" />
+								)}
 							</Button>
 						</div>
 					</CardHeader>
@@ -252,7 +305,9 @@ function LoginPage({
 							<div className="space-y-2">
 								<Label htmlFor="owner-token">Owner Token</Label>
 								<Input
-									aria-describedby={error === null ? "owner-token-help" : "owner-token-error"}
+									aria-describedby={
+										error === null ? "owner-token-help" : "owner-token-error"
+									}
 									aria-invalid={error !== null}
 									autoComplete="current-password"
 									autoFocus
@@ -263,11 +318,17 @@ function LoginPage({
 									value={ownerToken}
 								/>
 								{error === null ? (
-									<p className="text-sm text-muted-foreground" id="owner-token-help">
+									<p
+										className="text-sm text-muted-foreground"
+										id="owner-token-help"
+									>
 										Token 只保存在当前浏览器本地。
 									</p>
 								) : (
-									<p className="text-sm font-medium text-destructive" id="owner-token-error">
+									<p
+										className="text-sm font-medium text-destructive"
+										id="owner-token-error"
+									>
 										{error}
 									</p>
 								)}
@@ -302,7 +363,9 @@ function ConsoleShell({
 	const location = useLocation();
 	const navigate = useNavigate();
 	const currentRoute = useMemo(
-		() => routeItems.find((item) => item.path === location.pathname) ?? routeItems[0],
+		() =>
+			routeItems.find((item) => item.path === location.pathname) ??
+			routeItems[0],
 		[location.pathname],
 	);
 
@@ -312,9 +375,19 @@ function ConsoleShell({
 	}
 
 	return (
-		<div className={sidebarCollapsed ? "noesis-shell noesis-shell-collapsed" : "noesis-shell"}>
+		<div
+			className={
+				sidebarCollapsed
+					? "noesis-shell noesis-shell-collapsed"
+					: "noesis-shell"
+			}
+		>
 			<aside
-				className={sidebarCollapsed ? "noesis-sidebar noesis-sidebar-collapsed" : "noesis-sidebar"}
+				className={
+					sidebarCollapsed
+						? "noesis-sidebar noesis-sidebar-collapsed"
+						: "noesis-sidebar"
+				}
 				data-collapsed={sidebarCollapsed}
 			>
 				<div className="mb-8 flex min-h-11 items-center gap-3 px-2">
@@ -322,14 +395,23 @@ function ConsoleShell({
 						<Network className="size-5" aria-hidden="true" />
 					</div>
 					<div className="noesis-sidebar-label min-w-0">
-						<p className="truncate text-sm font-semibold leading-none">Noesis 灵识</p>
-						<p className="mt-1 truncate text-xs text-muted-foreground">Human-AI Workspace</p>
+						<p className="truncate text-sm font-semibold leading-none">
+							Noesis 灵识
+						</p>
+						<p className="mt-1 truncate text-xs text-muted-foreground">
+							Human-AI Workspace
+						</p>
 					</div>
 				</div>
 
 				<nav aria-label="主导航" className="space-y-2">
 					{routeItems.map((item) => (
-						<NavLink className="noesis-nav-link" key={item.path} title={item.label} to={item.path}>
+						<NavLink
+							className="noesis-nav-link"
+							key={item.path}
+							title={item.label}
+							to={item.path}
+						>
 							<item.icon className="size-4 shrink-0" aria-hidden="true" />
 							<span className="noesis-sidebar-label">{item.label}</span>
 						</NavLink>
@@ -344,7 +426,11 @@ function ConsoleShell({
 						title={sidebarCollapsed ? "展开菜单" : "收起菜单"}
 						variant="outline"
 					>
-						{sidebarCollapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+						{sidebarCollapsed ? (
+							<PanelLeftOpen aria-hidden="true" />
+						) : (
+							<PanelLeftClose aria-hidden="true" />
+						)}
 						<span className="noesis-sidebar-label">收起菜单</span>
 					</Button>
 				</div>
@@ -363,16 +449,24 @@ function ConsoleShell({
 						<div className="hidden min-h-11 flex-1 items-center gap-3 rounded-full border border-border/70 bg-card/50 px-4 text-sm text-muted-foreground md:flex">
 							<Search className="size-4" aria-hidden="true" />
 							<span>搜索即将接入 Gateway / Machine / Task</span>
-							<kbd className="ml-auto rounded border border-border/70 px-2 py-0.5 text-xs">⌘K</kbd>
+							<kbd className="ml-auto rounded border border-border/70 px-2 py-0.5 text-xs">
+								⌘K
+							</kbd>
 						</div>
 
 						<Button
-							aria-label={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
+							aria-label={
+								theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"
+							}
 							onClick={onToggleTheme}
 							size="icon"
 							variant="outline"
 						>
-							{theme === "dark" ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+							{theme === "dark" ? (
+								<Sun aria-hidden="true" />
+							) : (
+								<Moon aria-hidden="true" />
+							)}
 						</Button>
 
 						<Button onClick={handleLogout} variant="outline">
@@ -381,9 +475,16 @@ function ConsoleShell({
 						</Button>
 					</div>
 
-					<nav aria-label="移动端主导航" className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden">
+					<nav
+						aria-label="移动端主导航"
+						className="flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden"
+					>
 						{routeItems.map((item) => (
-							<NavLink className="noesis-nav-link min-w-fit" key={item.path} to={item.path}>
+							<NavLink
+								className="noesis-nav-link min-w-fit"
+								key={item.path}
+								to={item.path}
+							>
 								<item.icon className="size-4" aria-hidden="true" />
 								<span>{item.label}</span>
 							</NavLink>
@@ -393,7 +494,9 @@ function ConsoleShell({
 
 				<div className="border-b border-border/70 bg-card/25 px-4 py-3 text-sm text-muted-foreground lg:px-6">
 					<span>面包屑：</span>
-					<span className="font-medium text-foreground">{currentRoute.label}</span>
+					<span className="font-medium text-foreground">
+						{currentRoute.label}
+					</span>
 					<span className="mx-2 text-border">/</span>
 					<span>{currentRoute.description}</span>
 				</div>
@@ -401,10 +504,18 @@ function ConsoleShell({
 				<main className="flex-1 px-4 py-6 lg:px-6">
 					<Routes>
 						<Route element={<Navigate replace to="/dashboard" />} index />
-						<Route element={<DashboardPage ownerToken={ownerToken} />} path="/dashboard" />
+						<Route
+							element={<DashboardPage ownerToken={ownerToken} />}
+							path="/dashboard"
+						/>
 						<Route element={<MachinesPage />} path="/machines" />
 						<Route element={<TasksPage />} path="/tasks" />
-						<Route element={<SettingsPage onLogout={handleLogout} ownerToken={ownerToken} />} path="/settings" />
+						<Route
+							element={
+								<SettingsPage onLogout={handleLogout} ownerToken={ownerToken} />
+							}
+							path="/settings"
+						/>
 						<Route element={<Navigate replace to="/dashboard" />} path="*" />
 					</Routes>
 				</main>
@@ -421,7 +532,10 @@ function DashboardPage({ ownerToken }: { ownerToken: string }) {
 				title="仪表盘"
 			/>
 
-			<section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label="P0 控制闭环占位状态">
+			<section
+				className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+				aria-label="P0 控制闭环占位状态"
+			>
 				{statusCards.map((card) => (
 					<Card className="noesis-panel noesis-card-hover" key={card.title}>
 						<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -434,7 +548,9 @@ function DashboardPage({ ownerToken }: { ownerToken: string }) {
 							</div>
 						</CardHeader>
 						<CardContent>
-							<p className="text-sm text-muted-foreground">{card.description}</p>
+							<p className="text-sm text-muted-foreground">
+								{card.description}
+							</p>
 						</CardContent>
 					</Card>
 				))}
@@ -446,10 +562,16 @@ function DashboardPage({ ownerToken }: { ownerToken: string }) {
 						<CheckCircle2 className="size-5 text-primary" aria-hidden="true" />
 						本地门禁状态
 					</CardTitle>
-					<CardDescription>Owner Token 已保存在当前浏览器。本阶段不做服务端校验。</CardDescription>
+					<CardDescription>
+						Owner Token 已保存在当前浏览器。本阶段不做服务端校验。
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="grid gap-4 md:grid-cols-3">
-					<StatusChip icon={ShieldCheck} label="Owner Token" value={ownerToken.length > 0 ? "已保存" : "未保存"} />
+					<StatusChip
+						icon={ShieldCheck}
+						label="Owner Token"
+						value={ownerToken.length > 0 ? "已保存" : "未保存"}
+					/>
 					<StatusChip icon={Network} label="Gateway API" value="待接入" />
 					<StatusChip icon={Bot} label="Task Event" value="待创建" />
 				</CardContent>
@@ -482,18 +604,32 @@ function TasksPage() {
 	);
 }
 
-function SettingsPage({ onLogout, ownerToken }: { onLogout: () => void; ownerToken: string }) {
+function SettingsPage({
+	onLogout,
+	ownerToken,
+}: {
+	onLogout: () => void;
+	ownerToken: string;
+}) {
 	return (
 		<div className="space-y-6">
-			<PageHeading description="本阶段只暴露本地门禁状态和退出入口。" title="设置" />
+			<PageHeading
+				description="本阶段只暴露本地门禁状态和退出入口。"
+				title="设置"
+			/>
 			<Card className="noesis-panel max-w-2xl">
 				<CardHeader>
 					<CardTitle>Owner Token</CardTitle>
-					<CardDescription>Token 已保存，但不会在界面显示明文。</CardDescription>
+					<CardDescription>
+						Token 已保存，但不会在界面显示明文。
+					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="rounded-lg border border-border/70 bg-secondary/40 p-4 text-sm text-muted-foreground">
-						当前状态：<span className="font-medium text-foreground">{ownerToken.length > 0 ? "已保存" : "未保存"}</span>
+						当前状态：
+						<span className="font-medium text-foreground">
+							{ownerToken.length > 0 ? "已保存" : "未保存"}
+						</span>
 					</div>
 					<Separator />
 					<Button onClick={onLogout} variant="destructive">
@@ -526,24 +662,46 @@ function PlaceholderPage({
 						<Icon className="size-6" aria-hidden="true" />
 					</div>
 					<CardTitle className="pt-2">{children}</CardTitle>
-					<CardDescription>这是诚实占位状态，不使用大规模 mock 数据。</CardDescription>
+					<CardDescription>
+						这是诚实占位状态，不使用大规模 mock 数据。
+					</CardDescription>
 				</CardHeader>
 			</Card>
 		</div>
 	);
 }
 
-function PageHeading({ description, title }: { description: string; title: string }) {
+function PageHeading({
+	description,
+	title,
+}: {
+	description: string;
+	title: string;
+}) {
 	return (
 		<section className="space-y-2">
-			<p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">Noesis Console</p>
-			<h1 className="text-3xl font-semibold tracking-tight text-foreground">{title}</h1>
-			<p className="max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
+			<p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">
+				Noesis Console
+			</p>
+			<h1 className="text-3xl font-semibold tracking-tight text-foreground">
+				{title}
+			</h1>
+			<p className="max-w-3xl text-base leading-7 text-muted-foreground">
+				{description}
+			</p>
 		</section>
 	);
 }
 
-function StatusChip({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function StatusChip({
+	icon: Icon,
+	label,
+	value,
+}: {
+	icon: LucideIcon;
+	label: string;
+	value: string;
+}) {
 	return (
 		<div className="flex min-h-16 items-center gap-3 rounded-xl border border-border/70 bg-card/55 px-4 py-3 backdrop-blur-xl">
 			<div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">

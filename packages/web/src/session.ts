@@ -10,7 +10,9 @@ export interface BrowserStorage {
 	removeItem(key: string): void;
 }
 
-export function readOwnerToken(storage: Pick<BrowserStorage, "getItem">): string | null {
+export function readOwnerToken(
+	storage: Pick<BrowserStorage, "getItem">,
+): string | null {
 	try {
 		const token = storage.getItem(ownerTokenKey)?.trim();
 		return token === undefined || token.length === 0 ? null : token;
@@ -19,7 +21,10 @@ export function readOwnerToken(storage: Pick<BrowserStorage, "getItem">): string
 	}
 }
 
-export function saveOwnerToken(storage: Pick<BrowserStorage, "setItem">, token: string): boolean {
+export function saveOwnerToken(
+	storage: Pick<BrowserStorage, "setItem">,
+	token: string,
+): boolean {
 	const normalized = token.trim();
 
 	if (normalized.length === 0) {
@@ -34,7 +39,9 @@ export function saveOwnerToken(storage: Pick<BrowserStorage, "setItem">, token: 
 	}
 }
 
-export function clearOwnerToken(storage: Pick<BrowserStorage, "removeItem">): boolean {
+export function clearOwnerToken(
+	storage: Pick<BrowserStorage, "removeItem">,
+): boolean {
 	try {
 		storage.removeItem(ownerTokenKey);
 		return true;
@@ -55,7 +62,10 @@ export function readTheme(
 	}
 }
 
-export function saveTheme(storage: Pick<BrowserStorage, "setItem">, theme: NoesisTheme): boolean {
+export function saveTheme(
+	storage: Pick<BrowserStorage, "setItem">,
+	theme: NoesisTheme,
+): boolean {
 	try {
 		storage.setItem(themeKey, theme);
 		return true;
@@ -64,7 +74,9 @@ export function saveTheme(storage: Pick<BrowserStorage, "setItem">, theme: Noesi
 	}
 }
 
-export function readSidebarCollapsed(storage: Pick<BrowserStorage, "getItem">): boolean {
+export function readSidebarCollapsed(
+	storage: Pick<BrowserStorage, "getItem">,
+): boolean {
 	try {
 		return storage.getItem(sidebarCollapsedKey) === "true";
 	} catch {
