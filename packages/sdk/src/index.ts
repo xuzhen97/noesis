@@ -2,6 +2,7 @@ import {
 	protocolVersion,
 	type ApiResponse,
 	type CommandRunPayload,
+	type GatewayInfo,
 	type Task,
 	type TaskEvent,
 	type TaskStatus,
@@ -13,6 +14,8 @@ export interface NoesisClientOptions {
 	baseUrl: string;
 	/** 可注入的 fetch 实现，用于测试或定制 HTTP 行为 */
 	fetch?: typeof fetch;
+	/** Owner Token：Gateway 控制面凭证 */
+	ownerToken?: string;
 }
 
 /** ping 结果 */
@@ -40,11 +43,23 @@ export interface RunCommandResult {
 export class NoesisClient {
 	readonly baseUrl: string;
 	readonly #fetch: typeof fetch;
+	readonly #ownerToken?: string;
 
 	/** 构造 NoesisClient，注入 Gateway URL 和可选的 fetch */
 	constructor(options: NoesisClientOptions) {
 		this.baseUrl = options.baseUrl.replace(/\/$/, "");
 		this.#fetch = options.fetch ?? fetch;
+		this.#ownerToken = options.ownerToken;
+	}
+
+	#headers(): Record<string, string> {
+		const headers: Record<string, string> = {
+			"content-type": "application/json",
+		};
+		if (this.#ownerToken !== undefined) {
+			headers.authorization = `Bearer ${this.#ownerToken}`;
+		}
+		return headers;
 	}
 
 	/** 检测 Gateway 是否可达，返回协议版本信息 */
@@ -64,7 +79,7 @@ export class NoesisClient {
 	}): Promise<Task> {
 		const response = await this.#fetch(`${this.baseUrl}/api/tasks`, {
 			method: "POST",
-			headers: { "content-type": "application/json" },
+			headers: this.#headers(),
 			body: JSON.stringify(input),
 		});
 		return await this.#readApi<Task>(response);
@@ -73,15 +88,27 @@ export class NoesisClient {
 	/** 根据 ID 查询 Task 当前状态 */
 	async getTask(taskId: string): Promise<Task> {
 		return await this.#readApi<Task>(
-			await this.#fetch(`${this.baseUrl}/api/tasks/${taskId}`),
+			await this.#fetch(`${this.baseUrl}/api/tasks/${taskId}`, {
+				headers: this.#headers(),
+			}),
 		);
 	}
 
 	/** 查询 Task 的事件列表 */
 	async getTaskEvents(taskId: string): Promise<TaskEvent[]> {
 		return await this.#readApi<TaskEvent[]>(
-			await this.#fetch(`${this.baseUrl}/api/tasks/${taskId}/events`),
+			await this.#fetch(`${this.baseUrl}/api/tasks/${taskId}/events`, {
+				headers: this.#headers(),
+			}),
 		);
+	}
+
+	/** 获取 Gateway 基础信息（需要 Owner Token） */
+	async getGatewayInfo(): Promise<GatewayInfo> {
+		const response = await this.#fetch(`${this.baseUrl}/api/gateway/info`, {
+			headers: this.#headers(),
+		});
+		return await this.#readApi<GatewayInfo>(response);
 	}
 
 	/** 创建 command.run 任务并轮询等待完成，返回执行结果 */
