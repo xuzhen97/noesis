@@ -115,3 +115,12 @@ export interface GatewayHealth {
 	service: "gateway";
 	protocolVersion: typeof protocolVersion;
 }
+
+/** Gateway 基础信息：设置页和控制台使用的只读摘要 */
+export interface GatewayInfo {
+	name: string;
+	service: string;
+	protocolVersion: typeof protocolVersion;
+	auth: { mode: "owner-token" };
+	capabilities: string[];
+}
