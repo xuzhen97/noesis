@@ -32,13 +32,7 @@ export function readBearerToken(
 /**
  * 常量时间比较两个 token。长度不同直接失败；长度相同用 timingSafeEqual。
  */
-export function ownerTokenEquals(
-	expected: string,
-	actual: string,
-): boolean {
+export function ownerTokenEquals(expected: string, actual: string): boolean {
 	if (expected.length !== actual.length) return false;
-	return timingSafeEqual(
-		Buffer.from(expected),
-		Buffer.from(actual),
-	);
+	return timingSafeEqual(Buffer.from(expected), Buffer.from(actual));
 }

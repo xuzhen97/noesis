@@ -95,66 +95,66 @@ describe("Noesis SDK shell", () => {
 			stdout: "noesis-ok\n",
 		});
 
-			expect(calls).toEqual([
-				"POST http://127.0.0.1:8080/api/tasks",
-				"GET http://127.0.0.1:8080/api/tasks/task_1",
-				"GET http://127.0.0.1:8080/api/tasks/task_1/events",
-			]);
+		expect(calls).toEqual([
+			"POST http://127.0.0.1:8080/api/tasks",
+			"GET http://127.0.0.1:8080/api/tasks/task_1",
+			"GET http://127.0.0.1:8080/api/tasks/task_1/events",
+		]);
+	});
+
+	it("passes ownerToken in Authorization header", async () => {
+		let capturedHeaders: Record<string, string> = {};
+		const fakeFetch: typeof fetch = async (_input, init) => {
+			capturedHeaders = (init?.headers ?? {}) as Record<string, string>;
+			return Response.json({
+				ok: true,
+				requestId: "req_1",
+				data: {
+					name: "Noesis Gateway",
+					service: "gateway",
+					protocolVersion: "0.1.0",
+					auth: { mode: "owner-token" },
+					capabilities: [],
+				},
+			});
+		};
+
+		const client = new NoesisClient({
+			baseUrl: "http://127.0.0.1:8080",
+			fetch: fakeFetch,
+			ownerToken: "test-token",
 		});
 
-		it("passes ownerToken in Authorization header", async () => {
-			let capturedHeaders: Record<string, string> = {};
-			const fakeFetch: typeof fetch = async (_input, init) => {
-				capturedHeaders = (init?.headers ?? {}) as Record<string, string>;
-				return Response.json({
-								ok: true,
-								requestId: "req_1",
-								data: {
-										name: "Noesis Gateway",
-										service: "gateway",
-										protocolVersion: "0.1.0",
-										auth: { mode: "owner-token" },
-										capabilities: [],
-								},
-				});
-			};
+		await client.getGatewayInfo();
+		expect(capturedHeaders.authorization).toBe("Bearer test-token");
+	});
 
-			const client = new NoesisClient({
-				baseUrl: "http://127.0.0.1:8080",
-				fetch: fakeFetch,
-				ownerToken: "test-token",
+	it("getGatewayInfo returns GatewayInfo shape", async () => {
+		const fakeFetch: typeof fetch = async () =>
+			Response.json({
+				ok: true,
+				requestId: "req_1",
+				data: {
+					name: "Noesis Gateway",
+					service: "gateway",
+					protocolVersion: "0.1.0",
+					auth: { mode: "owner-token" },
+					capabilities: ["tasks.command.run", "machines.client-agent"],
+				},
 			});
 
-			await client.getGatewayInfo();
-			expect(capturedHeaders.authorization).toBe("Bearer test-token");
+		const client = new NoesisClient({
+			baseUrl: "http://127.0.0.1:8080",
+			fetch: fakeFetch,
+			ownerToken: "test-token",
 		});
 
-		it("getGatewayInfo returns GatewayInfo shape", async () => {
-			const fakeFetch: typeof fetch = async () =>
-				Response.json({
-								ok: true,
-								requestId: "req_1",
-								data: {
-										name: "Noesis Gateway",
-										service: "gateway",
-										protocolVersion: "0.1.0",
-										auth: { mode: "owner-token" },
-										capabilities: ["tasks.command.run", "machines.client-agent"],
-								},
-				});
-
-			const client = new NoesisClient({
-				baseUrl: "http://127.0.0.1:8080",
-				fetch: fakeFetch,
-				ownerToken: "test-token",
-			});
-
-			await expect(client.getGatewayInfo()).resolves.toEqual({
-				name: "Noesis Gateway",
-				service: "gateway",
-				protocolVersion: "0.1.0",
-				auth: { mode: "owner-token" },
-				capabilities: ["tasks.command.run", "machines.client-agent"],
-			});
+		await expect(client.getGatewayInfo()).resolves.toEqual({
+			name: "Noesis Gateway",
+			service: "gateway",
+			protocolVersion: "0.1.0",
+			auth: { mode: "owner-token" },
+			capabilities: ["tasks.command.run", "machines.client-agent"],
 		});
+	});
 });

@@ -169,7 +169,9 @@ export function App() {
 			}
 			setAuth({ phase: "authenticated", token: stored, info: result });
 		});
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [auth.phase]);
 
 	useEffect(() => {
@@ -259,9 +261,7 @@ function CheckingPage() {
 						className="mx-auto size-8 animate-spin text-primary"
 					/>
 					<CardTitle className="pt-4">正在连接 Gateway…</CardTitle>
-					<CardDescription>
-						正在验证本地保存的 Owner Token。
-					</CardDescription>
+					<CardDescription>正在验证本地保存的 Owner Token。</CardDescription>
 				</CardHeader>
 			</Card>
 		</main>
@@ -574,15 +574,15 @@ function ConsoleShell({
 						/>
 						<Route element={<MachinesPage />} path="/machines" />
 						<Route element={<TasksPage />} path="/tasks" />
-					<Route
-						element={
-							<SettingsPage
-								gatewayInfo={gatewayInfo}
-								onLogout={handleLogout}
-							/>
-						}
-						path="/settings"
-					/>
+						<Route
+							element={
+								<SettingsPage
+									gatewayInfo={gatewayInfo}
+									onLogout={handleLogout}
+								/>
+							}
+							path="/settings"
+						/>
 						<Route element={<Navigate replace to="/dashboard" />} path="*" />
 					</Routes>
 				</main>
@@ -639,11 +639,7 @@ function DashboardPage({ gatewayInfo }: { gatewayInfo: GatewayInfo }) {
 						label="认证模式"
 						value={gatewayInfo.auth.mode}
 					/>
-					<StatusChip
-						icon={Network}
-						label="Gateway"
-						value={gatewayInfo.name}
-					/>
+					<StatusChip icon={Network} label="Gateway" value={gatewayInfo.name} />
 					<StatusChip
 						icon={Bot}
 						label="协议版本"
@@ -695,9 +691,7 @@ function SettingsPage({
 			<Card className="noesis-panel max-w-2xl">
 				<CardHeader>
 					<CardTitle>Owner Token</CardTitle>
-					<CardDescription>
-						已认证，Token 不会在界面显示明文。
-					</CardDescription>
+					<CardDescription>已认证，Token 不会在界面显示明文。</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="rounded-lg border border-border/70 bg-secondary/40 p-4 text-sm text-muted-foreground">
@@ -711,15 +705,11 @@ function SettingsPage({
 						</div>
 						<div>
 							<span className="text-muted-foreground">协议版本：</span>
-							<span className="font-medium">
-								{gatewayInfo.protocolVersion}
-							</span>
+							<span className="font-medium">{gatewayInfo.protocolVersion}</span>
 						</div>
 						<div>
 							<span className="text-muted-foreground">认证模式：</span>
-							<span className="font-medium">
-								{gatewayInfo.auth.mode}
-							</span>
+							<span className="font-medium">{gatewayInfo.auth.mode}</span>
 						</div>
 						<div>
 							<span className="text-muted-foreground">能力：</span>

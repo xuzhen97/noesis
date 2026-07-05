@@ -285,10 +285,7 @@ export async function startGateway(
 			) {
 				const filePath = url.pathname === "/" ? "/index.html" : url.pathname;
 				// 防路径穿越
-				const resolved = resolve(
-					options.webDir,
-					"." + normalize(filePath),
-				);
+				const resolved = resolve(options.webDir, "." + normalize(filePath));
 				if (!resolved.startsWith(options.webDir)) {
 					json(response, 403, fail("BAD_REQUEST", "Forbidden"));
 					return;
@@ -328,10 +325,7 @@ export async function startGateway(
 			return;
 		}
 		const bearer = readBearerToken(request.headers.authorization);
-		if (
-			bearer === null ||
-			!ownerTokenEquals(options.ownerToken, bearer)
-		) {
+		if (bearer === null || !ownerTokenEquals(options.ownerToken, bearer)) {
 			socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
 			socket.destroy();
 			return;

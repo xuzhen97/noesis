@@ -7,13 +7,7 @@ import { join } from "node:path";
 
 const root = join(fileURLToPath(import.meta.url), "..", "..");
 const gatewayScript = join(root, "packages", "server", "dist", "main.js");
-const clientScript = join(
-	root,
-	"packages",
-	"client",
-	"dist",
-	"main.js",
-);
+const clientScript = join(root, "packages", "client", "dist", "main.js");
 const webDir = join(root, "packages", "web", "dist");
 
 const token = process.env.NOESIS_OWNER_TOKEN ?? "dev-owner-token";
