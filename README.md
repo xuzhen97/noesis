@@ -144,6 +144,78 @@ CLI ──HTTP──▶ Gateway ──WebSocket──▶ Client Agent
 - **CLI**：命令行工具，通过 HTTP 与 Gateway 交互
 - **SDK**：Node.js 库，封装 HTTP API 调用
 
+## 本地开发验证
+
+从源码快速启动全链路，无需构建 distribution tarball。
+
+### 一键启动
+
+```bash
+node scripts/dev-serve.mjs
+```
+
+自动启动 Gateway（端口 8080）+ Client Agent，并托管 Web 控制台。
+输出就绪信息后，打开 `http://127.0.0.1:8080` 输入 `dev-owner-token` 进入控制台。
+
+可通过环境变量定制端口和 Token：
+
+```bash
+# PowerShell
+$env:NOESIS_PORT="3000"
+$env:NOESIS_OWNER_TOKEN="my-token"
+node scripts/dev-serve.mjs
+
+# Bash
+export NOESIS_PORT=3000
+export NOESIS_OWNER_TOKEN="my-token"
+node scripts/dev-serve.mjs
+```
+
+按 `Ctrl+C` 停止所有进程。
+
+### CLI 手动验证
+
+Gateway 和 Client Agent 运行后，另开终端执行：
+
+```bash
+node packages/cli/dist/main.js task run \
+  --gateway http://127.0.0.1:8080 \
+  --machine local-dev-machine \
+  --owner-token "dev-owner-token" \
+  --json \
+  -- node -e "console.log('noesis-ok')"
+```
+
+或设环境变量免输 token：
+
+```bash
+export NOESIS_OWNER_TOKEN="dev-owner-token"
+node packages/cli/dist/main.js task run \
+  --gateway http://127.0.0.1:8080 \
+  --machine local-dev-machine \
+  --json \
+  -- node -e "console.log('noesis-ok')"
+```
+
+### 测试错误场景
+
+```bash
+# 错误 token → 401
+node packages/cli/dist/main.js task run \
+  --gateway http://127.0.0.1:8080 \
+  --machine local-dev-machine \
+  --owner-token "wrong-token" \
+  --json \
+  -- node -e "console.log('noesis-ok')"
+
+# 缺 token → 本地立即失败
+node packages/cli/dist/main.js task run \
+  --gateway http://127.0.0.1:8080 \
+  --machine local-dev-machine \
+  --json \
+  -- node -e "console.log('noesis-ok')"
+```
+
 ## 项目语言
 
 业务文档默认使用简体中文。代码标识符、包名、协议字段、数据库字段、枚举值使用英文。
