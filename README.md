@@ -151,6 +151,10 @@ CLI ──HTTP──▶ Gateway ──WebSocket──▶ Client Agent
 ### 一键启动
 
 ```bash
+# npm script（推荐）
+pnpm dev:serve
+
+# 或直接调用
 node scripts/dev-serve.mjs
 ```
 
@@ -172,6 +176,14 @@ node scripts/dev-serve.mjs
 ```
 
 按 `Ctrl+C` 停止所有进程。
+
+### 冒烟测试
+
+从源码全自动验证：构建 → Gateway → Client Agent → CLI → 错误场景 → 清理。
+
+```bash
+pnpm test:smoke
+```
 
 ### CLI 手动验证
 
