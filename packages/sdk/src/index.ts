@@ -1,3 +1,4 @@
+import { TransfersApi } from "./transfers.js";
 import {
 	protocolVersion,
 	type ApiResponse,
@@ -45,11 +46,19 @@ export class NoesisClient {
 	readonly #fetch: typeof fetch;
 	readonly #ownerToken?: string;
 
+	readonly transfers: TransfersApi;
+
 	/** 构造 NoesisClient，注入 Gateway URL 和可选的 fetch */
 	constructor(options: NoesisClientOptions) {
 		this.baseUrl = options.baseUrl.replace(/\/$/, "");
 		this.#fetch = options.fetch ?? fetch;
 		this.#ownerToken = options.ownerToken;
+		this.transfers = new TransfersApi(
+			this.baseUrl,
+			() => this.#headers(),
+			<T>(r: Response) => this.#readApi<T>(r),
+			this.#fetch,
+		);
 	}
 
 	#headers(): Record<string, string> {
@@ -148,3 +157,9 @@ export class NoesisClient {
 		return body.data;
 	}
 }
+
+export {
+	uploadFileToAliyunDrive,
+	type AliyunUploadPlan,
+} from "./aliyun-upload.js";
+export { TransfersApi, type TransferJob } from "./transfers.js";

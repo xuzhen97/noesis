@@ -1,4 +1,6 @@
 import { NoesisClient, type RunCommandResult } from "@noesis/sdk";
+import { help, ownerTokenError, readFlag, readOwnerToken } from "./cli-args.js";
+import { runTransferDownload, runTransferUpload } from "./transfer-commands.js";
 
 /** CLI 命令执行结果 */
 export interface CliResult {
@@ -20,28 +22,6 @@ export interface CliClient {
 export interface RunCliOptions {
 	/** 可注入的 CLI 客户端，默认使用 NoesisClient */
 	client?: CliClient;
-}
-
-const help =
-	"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n";
-
-function readOwnerToken(args: readonly string[]): string {
-	const flagIndex = args.indexOf("--owner-token");
-	if (flagIndex !== -1) {
-		const value = args[flagIndex + 1];
-		if (value === undefined) throw new Error("--owner-token requires a value");
-		return value.trim();
-	}
-	const env = process.env.NOESIS_OWNER_TOKEN?.trim();
-	if (env && env.length > 0) return env;
-	throw new Error(
-		"Owner Token is required for task run (--owner-token or NOESIS_OWNER_TOKEN)",
-	);
-}
-
-function readFlag(args: readonly string[], name: string): string | undefined {
-	const index = args.indexOf(name);
-	return index === -1 ? undefined : args[index + 1];
 }
 
 /**
@@ -66,6 +46,14 @@ export async function runCli(
 			stdout: `noesis 0.0.0\nsdk ping protocol ${ping.protocolVersion}\n`,
 			stderr: "",
 		};
+	}
+
+	if (args[0] === "transfer" && args[1] === "upload") {
+		return await runTransferUpload(args);
+	}
+
+	if (args[0] === "transfer" && args[1] === "download") {
+		return await runTransferDownload(args);
 	}
 
 	if (args[0] === "task" && args[1] === "run") {
@@ -94,12 +82,8 @@ export async function runCli(
 		let ownerToken: string;
 		try {
 			ownerToken = readOwnerToken(args);
-		} catch (e) {
-			return {
-				exitCode: 1,
-				stdout: "",
-				stderr: (e as Error).message + "\n",
-			};
+		} catch (error) {
+			return ownerTokenError(error);
 		}
 
 		const client =

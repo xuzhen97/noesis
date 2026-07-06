@@ -64,6 +64,9 @@
 - **左导航 220px**：图标 + 文字，当前页左侧有蓝紫强调色边框
 - **顶栏 56px**：Logo、全局搜索、通知、主题切换、设置；主题切换在夜间/明亮间即时生效并记忆本地选择
 - **面包屑 40px**：显示当前位置，机器详情页右侧显示机器状态
+- **滚动边界**：左导航、顶栏与面包屑固定在控制台框架内，页面整体不滚动；仅主内容区随当前路由内容滚动
+- **滚动条**：主内容滚动条使用细圆角 thumb、透明 track；非滚动容器（例如 Settings Tab 栏）不得因为 `overflow-x-auto` 暴露横向滚动条
+- **页面标题区**：统一使用轻标题（标题 + 一行说明），不再显示 `NOESIS CONSOLE` 眉标，避免配置页/列表页出现过重 hero 区
 - **主内容区**：padding 24px
 
 ---
@@ -677,11 +680,17 @@
 
 **Tab 分区**：
 
-1. **API Token**：Token 列表表格，可生成/吊销
-2. **Pi Provider Profile**：Provider Profile 管理（URL/Key/消息类型/模型清单）
-3. **StorageProvider**：默认 AliyunDrive 的 clientId/clientSecret 配置 + OAuth 授权状态
-4. **WebRTC / TURN**：公共 STUN、托管 TURN 模板、自建 TURN Profile
-5. **保留策略**：任务事件保留天数、审计归档天数、Pi 会话本地限制、自动化截图/轨迹保留
+P0 当前只展示已经落地的真实设置，不放空占位：
+
+1. **Owner Token**：本地认证状态、Gateway 信息、协议版本、能力列表、退出并清除本地 Token
+2. **阿里云盘**：默认 AliyunDrive 的 clientId/clientSecret 配置 + OAuth 授权状态；状态表至少展示配置状态、授权记录状态、远程校验状态、校验说明、账户名、Drive ID、过期时间、最近检测时间
+
+后续完整设计再补充：
+
+- **API Token**：Token 列表表格，可生成/吊销
+- **Pi Provider Profile**：Provider Profile 管理（URL/Key/消息类型/模型清单）
+- **WebRTC / TURN**：公共 STUN、托管 TURN 模板、自建 TURN Profile
+- **保留策略**：任务事件保留天数、审计归档天数、Pi 会话本地限制、自动化截图/轨迹保留
 
 **Pi Provider Profile Tab 设计：**
 
@@ -706,7 +715,7 @@
 
 - 未配置时：显示配置表单（clientId 输入框 / clientSecret 输入框 / scope 默认值 / transferFolder 默认值 / cleanupTtlMs 默认值）+ 「保存配置」按钮
 - 已配置未授权：显示「配置已保存」状态 + 「开始授权」按钮（跳转到云盘页面 OAuth 流程，或内联弹窗）
-- 已配置已授权：显示配置信息（clientId / scope / transferFolder / cleanupTtlMs）+ 「编辑配置」按钮 + 授权状态（已授权账号名 / Drive ID / Token 过期时间）+ 「测试授权」「撤销授权」按钮
+- 已配置已授权：显示配置信息（clientId / scope / transferFolder / cleanupTtlMs）+ 「编辑配置」按钮 + 授权状态表（配置状态 / 授权记录状态 / 远程校验状态 / 校验说明 / 已授权账号名 / Drive ID / Token 过期时间 / 最近检测时间）+ 「测试授权」「撤销授权」按钮
 - clientSecret 输入框永远为 password 类型（不回显已保存的 secret）
 
 ---

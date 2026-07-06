@@ -8,7 +8,10 @@ export type NoesisErrorCode =
 	| "OWNER_TOKEN_REQUIRED"
 	| "TASK_NOT_FOUND"
 	| "TASK_TIMEOUT"
-	| "UNSUPPORTED_TASK_TYPE";
+	| "UNSUPPORTED_TASK_TYPE"
+	| "PATH_NOT_ALLOWED"
+	| "FILE_TOO_LARGE"
+	| "OAUTH_COMPLETE_FAILED";
 
 /** Noesis 错误对象结构：包含稳定 code 和安全 message，不泄露内部信息 */
 export interface NoesisErrorShape {

@@ -12,11 +12,16 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",
     "test": "vitest run"
   },
   "dependencies": {
     "@noesis/shared": "workspace:*",
+    "better-sqlite3": "^12.11.1",
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@noesis/client": "workspace:*",
+    "@types/better-sqlite3": "^7.6.13"
   }
 }

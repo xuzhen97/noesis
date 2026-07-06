@@ -1,12 +1,10 @@
 import WebSocket from "ws";
 import type {
 	ClientToGatewayMessage,
-	CommandRunPayload,
 	GatewayToClientMessage,
-	TaskEvent,
-	TaskStatus,
 } from "@noesis/shared";
-import { executeCommandRunTask } from "../command-executor/index.js";
+import { defaultDisks } from "../file-handler.js";
+import { createGatewayMessageHandler } from "./message-dispatch.js";
 
 /** Client Agent WebSocket 连接形状（用于注入 / 测试） */
 export interface ClientWsShape {
@@ -41,22 +39,6 @@ function toWsUrl(gatewayUrl: string): string {
 	return url.toString();
 }
 
-function makeEvent(
-	taskId: string,
-	type: string,
-	status: TaskStatus | undefined,
-	data: Record<string, unknown>,
-): ClientToGatewayMessage {
-	const taskEvent: TaskEvent = {
-		id: `event_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-		taskId,
-		type,
-		level: status === "failed" ? "error" : "info",
-		data,
-	};
-	return { type: "task.event", taskId, taskStatus: status, event: taskEvent };
-}
-
 /**
  * 启动 Client Agent：通过 WebSocket 连接到 Gateway，注册 hello，等待 client.accepted 后再开始处理任务派发。
  */
@@ -73,6 +55,7 @@ export async function startClientAgent(
 				JSON.stringify({
 					type: "client.hello",
 					machineId: options.machineId,
+					disks: defaultDisks(),
 				} satisfies ClientToGatewayMessage),
 			);
 			resolve();
@@ -101,58 +84,7 @@ export async function startClientAgent(
 
 	// client.accepted 之后，切换为任务派发处理
 	ws.removeAllListeners("message");
-	ws.on("message", (raw) => {
-		void (async () => {
-			let message: GatewayToClientMessage;
-			try {
-				message = JSON.parse(String(raw)) as GatewayToClientMessage;
-			} catch {
-				return;
-			}
-			if (message.type !== "task.dispatch") return;
-
-			ws.send(
-				JSON.stringify(
-					makeEvent(message.task.id, "task.running", "running", {}),
-				),
-			);
-
-			try {
-				const result = await executeCommandRunTask(
-					message.task.payload as unknown as CommandRunPayload,
-				);
-				ws.send(
-					JSON.stringify(
-						makeEvent(
-							message.task.id,
-							"task.succeeded",
-							result.exitCode === 0 ? "succeeded" : "failed",
-							result as unknown as Record<string, unknown>,
-						),
-					),
-				);
-			} catch (error: unknown) {
-				const safe =
-					typeof error === "object" && error !== null
-						? (error as { code?: unknown; message?: unknown })
-						: {};
-				ws.send(
-					JSON.stringify(
-						makeEvent(message.task.id, "task.failed", "failed", {
-							code:
-								typeof safe.code === "string"
-									? safe.code
-									: "NOESIS_UNAVAILABLE",
-							message:
-								typeof safe.message === "string"
-									? safe.message
-									: "Command execution failed",
-						}),
-					),
-				);
-			}
-		})();
-	});
+	ws.on("message", createGatewayMessageHandler(options, ws));
 
 	return { close: () => ws.close() };
 }

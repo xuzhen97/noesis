@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./aliyun-upload": {
+      "types": "./dist/aliyun-upload.d.ts",
+      "import": "./dist/aliyun-upload.js"
     }
   },
   "scripts": {

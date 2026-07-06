@@ -5,23 +5,40 @@ import {
 } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { extname, normalize, resolve } from "node:path";
-import { WebSocketServer, type WebSocket } from "ws";
+import { mkdirSync } from "node:fs";
+import { extname, join, normalize, resolve } from "node:path";
 import {
 	createNoesisError,
 	protocolVersion,
 	type ApiResponse,
-	type ClientToGatewayMessage,
 	type GatewayToClientMessage,
 	type GatewayHealth,
 	type GatewayInfo,
 	type Machine,
 	type Task,
-	type TaskEvent,
-	type TaskStatus,
 	type TaskType,
 } from "@noesis/shared";
 import { readBearerToken, ownerTokenEquals } from "./auth.js";
+import { openGatewayDb } from "./db/sqlite.js";
+import { AliyunDriveAuthService } from "./storage/aliyundrive/auth.js";
+import { resolveGatewayDataKey } from "./secret-box.js";
+import {
+	ensureMachineRow,
+	getMachineRow,
+	getTaskRow,
+	insertTask,
+	insertTaskEvent,
+	listTaskEvents,
+	listMachines,
+	updateTaskStatus,
+} from "./gateway-store.js";
+import {
+	createFileTask,
+	waitForTaskTerminal,
+	type FileTaskKind,
+} from "./file-tasks.js";
+import { TransferService } from "./transfer.js";
+import { attachGatewayWebSocket, type GatewayWsState } from "./gateway-ws.js";
 
 /** Gateway 启动选项 */
 export interface GatewayRuntimeOptions {
@@ -31,6 +48,10 @@ export interface GatewayRuntimeOptions {
 	ownerToken: string;
 	/** Web 静态文件目录（可选） */
 	webDir?: string;
+	/** SQLite 路径，默认 :memory: */
+	databasePath?: string;
+	/** 数据目录（密钥文件），默认 os.tmpdir/noesis-gateway */
+	dataDir?: string;
 }
 
 /** Gateway 运行时实例，包含 HTTP/WS URL 和关闭方法 */
@@ -43,22 +64,6 @@ export interface GatewayRuntime {
 	port: number;
 	/** 优雅关闭 Gateway：断开所有客户端连接并停止 HTTP 服务 */
 	close(): Promise<void>;
-}
-
-interface GatewayState {
-	machines: Map<string, Machine>;
-	clients: Map<string, WebSocket>;
-	tasks: Map<string, Task>;
-	events: Map<string, TaskEvent[]>;
-}
-
-function state(): GatewayState {
-	return {
-		machines: new Map(),
-		clients: new Map(),
-		tasks: new Map(),
-		events: new Map(),
-	};
 }
 
 function json<T>(
@@ -101,39 +106,28 @@ async function readBody(request: IncomingMessage): Promise<unknown> {
 	}
 }
 
-function appendEvent(gatewayState: GatewayState, event: TaskEvent): void {
-	const existing = gatewayState.events.get(event.taskId) ?? [];
-	existing.push(event);
-	gatewayState.events.set(event.taskId, existing);
-}
-
-function setTaskStatus(
-	gatewayState: GatewayState,
-	taskId: string,
-	status: TaskStatus,
+function dispatchIfPossible(
+	db: import("better-sqlite3").Database,
+	gatewayState: GatewayWsState,
+	task: Task,
 ): void {
-	const task = gatewayState.tasks.get(taskId);
-	if (task) gatewayState.tasks.set(taskId, { ...task, status });
-}
-
-function dispatchIfPossible(gatewayState: GatewayState, task: Task): void {
 	const client =
 		task.machineId === undefined
 			? undefined
 			: gatewayState.clients.get(task.machineId);
 	if (!client || client.readyState !== client.OPEN) {
-		setTaskStatus(gatewayState, task.id, "waiting_client");
+		updateTaskStatus(db, task.id, "waiting_client");
 		return;
 	}
-	setTaskStatus(gatewayState, task.id, "dispatched");
-	appendEvent(gatewayState, {
+	updateTaskStatus(db, task.id, "dispatched");
+	insertTaskEvent(db, {
 		id: `event_${randomUUID()}`,
 		taskId: task.id,
 		type: "task.dispatched",
 		level: "info",
 		data: { machineId: task.machineId },
 	});
-	const dispatched = gatewayState.tasks.get(task.id) ?? task;
+	const dispatched = getTaskRow(db, task.id) ?? task;
 	client.send(
 		JSON.stringify({
 			type: "task.dispatch",
@@ -160,7 +154,30 @@ function isCommandRunRequest(value: unknown): value is {
 export async function startGateway(
 	options: GatewayRuntimeOptions,
 ): Promise<GatewayRuntime> {
-	const gatewayState = state();
+	const db = openGatewayDb(options.databasePath ?? ":memory:");
+	const dataDir =
+		options.dataDir ?? join(process.env.TEMP ?? "/tmp", "noesis-gateway");
+	mkdirSync(dataDir, { recursive: true });
+	const secretKey = resolveGatewayDataKey(dataDir);
+	const aliyunAuth = new AliyunDriveAuthService(db, secretKey);
+	const gatewayState: GatewayWsState = {
+		machines: new Map(),
+		clients: new Map(),
+	};
+
+	function sendToMachine(
+		machineId: string,
+		message: GatewayToClientMessage,
+	): boolean {
+		const client = gatewayState.clients.get(machineId);
+		if (!client || client.readyState !== client.OPEN) return false;
+		client.send(JSON.stringify(message));
+		return true;
+	}
+
+	const transferService = new TransferService(db, aliyunAuth, {
+		sendToMachine,
+	});
 
 	const server = createServer(
 		async (request: IncomingMessage, response: ServerResponse) => {
@@ -214,7 +231,14 @@ export async function startGateway(
 						service: "gateway",
 						protocolVersion,
 						auth: { mode: "owner-token" },
-						capabilities: ["tasks.command.run", "machines.client-agent"],
+						capabilities: [
+							"tasks.command.run",
+							"tasks.file.list",
+							"tasks.file.read",
+							"tasks.file.write",
+							"machines.client-agent",
+							"storage.aliyundrive",
+						],
 					}),
 				);
 				return;
@@ -230,6 +254,7 @@ export async function startGateway(
 					);
 					return;
 				}
+				ensureMachineRow(db, body.machineId);
 				const task: Task = {
 					id: `task_${randomUUID()}`,
 					machineId: body.machineId,
@@ -237,27 +262,23 @@ export async function startGateway(
 					status: "created",
 					payload: body.payload,
 				};
-				gatewayState.tasks.set(task.id, task);
-				gatewayState.events.set(task.id, []);
-				appendEvent(gatewayState, {
+				insertTask(db, task);
+				insertTaskEvent(db, {
 					id: `event_${randomUUID()}`,
 					taskId: task.id,
 					type: "task.created",
 					level: "info",
 					data: {},
 				});
-				setTaskStatus(gatewayState, task.id, "queued");
-				dispatchIfPossible(
-					gatewayState,
-					gatewayState.tasks.get(task.id) ?? task,
-				);
-				json(response, 201, ok(gatewayState.tasks.get(task.id) ?? task));
+				updateTaskStatus(db, task.id, "queued");
+				dispatchIfPossible(db, gatewayState, getTaskRow(db, task.id) ?? task);
+				json(response, 201, ok(getTaskRow(db, task.id) ?? task));
 				return;
 			}
 
 			const taskMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)$/);
 			if (request.method === "GET" && taskMatch) {
-				const found = gatewayState.tasks.get(taskMatch[1]);
+				const found = getTaskRow(db, taskMatch[1]);
 				json(
 					response,
 					found ? 200 : 404,
@@ -268,12 +289,12 @@ export async function startGateway(
 
 			const eventsMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/events$/);
 			if (request.method === "GET" && eventsMatch) {
-				const found = gatewayState.events.get(eventsMatch[1]);
-				json(
-					response,
-					found ? 200 : 404,
-					found ? ok(found) : fail("TASK_NOT_FOUND", "Task not found"),
-				);
+				const taskRow = getTaskRow(db, eventsMatch[1]);
+				if (!taskRow) {
+					json(response, 404, fail("TASK_NOT_FOUND", "Task not found"));
+					return;
+				}
+				json(response, 200, ok(listTaskEvents(db, eventsMatch[1])));
 				return;
 			}
 
@@ -313,83 +334,376 @@ export async function startGateway(
 				}
 			}
 
+			if (request.method === "GET" && url.pathname === "/api/machines") {
+				const fromDb = listMachines(db);
+				const merged = new Map<string, Machine>();
+				for (const m of fromDb) merged.set(m.id, m);
+				for (const [id, m] of gatewayState.machines) merged.set(id, m);
+				json(response, 200, ok([...merged.values()]));
+				return;
+			}
+
+			const machineMatch = url.pathname.match(/^\/api\/machines\/([^/]+)$/);
+			if (request.method === "GET" && machineMatch) {
+				const machine =
+					gatewayState.machines.get(machineMatch[1]) ??
+					getMachineRow(db, machineMatch[1]);
+				json(
+					response,
+					machine ? 200 : 404,
+					machine
+						? ok(machine)
+						: fail("MACHINE_NOT_FOUND", "Machine not found"),
+				);
+				return;
+			}
+
+			async function runFileApi(
+				taskType: FileTaskKind,
+				body: Record<string, unknown>,
+			) {
+				if (typeof body.machineId !== "string") {
+					json(response, 400, fail("BAD_REQUEST", "machineId is required"));
+					return;
+				}
+				const payload = { ...body };
+				delete payload.machineId;
+				const task = createFileTask(db, {
+					machineId: body.machineId,
+					taskType,
+					payload,
+				});
+				dispatchIfPossible(db, gatewayState, task);
+				try {
+					const done = await waitForTaskTerminal(db, task.id);
+					if (done.status !== "succeeded") {
+						json(
+							response,
+							502,
+							fail(
+								"NOESIS_UNAVAILABLE",
+								done.errorMessage ?? "File task failed",
+							),
+						);
+						return;
+					}
+					json(response, 200, ok(done.result ?? {}));
+				} catch (error) {
+					json(
+						response,
+						504,
+						fail(
+							"TASK_TIMEOUT",
+							error instanceof Error ? error.message : "Timeout",
+						),
+					);
+				}
+			}
+
+			if (request.method === "POST" && url.pathname === "/api/files/list") {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (typeof body.path !== "string") {
+					json(response, 400, fail("BAD_REQUEST", "path is required"));
+					return;
+				}
+				await runFileApi("file.list", body);
+				return;
+			}
+
+			if (request.method === "POST" && url.pathname === "/api/files/read") {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (typeof body.path !== "string") {
+					json(response, 400, fail("BAD_REQUEST", "path is required"));
+					return;
+				}
+				await runFileApi("file.read", body);
+				return;
+			}
+
+			if (request.method === "POST" && url.pathname === "/api/files/write") {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (typeof body.path !== "string" || typeof body.content !== "string") {
+					json(
+						response,
+						400,
+						fail("BAD_REQUEST", "path and content are required"),
+					);
+					return;
+				}
+				await runFileApi("file.write", body);
+				return;
+			}
+
+			if (
+				request.method === "GET" &&
+				url.pathname === "/api/aliyundrive/status"
+			) {
+				json(response, 200, ok(aliyunAuth.getStatus()));
+				return;
+			}
+
+			if (
+				request.method === "PUT" &&
+				url.pathname === "/api/aliyundrive/config"
+			) {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (typeof body.clientId !== "string" || !body.clientId.trim()) {
+					json(response, 400, fail("BAD_REQUEST", "clientId is required"));
+					return;
+				}
+				const saved = aliyunAuth.saveConfig({
+					clientId: body.clientId,
+					clientSecret:
+						typeof body.clientSecret === "string"
+							? body.clientSecret
+							: undefined,
+					scope: typeof body.scope === "string" ? body.scope : undefined,
+					openapiBase:
+						typeof body.openapiBase === "string" ? body.openapiBase : undefined,
+					redirectUri:
+						typeof body.redirectUri === "string" ? body.redirectUri : undefined,
+					transferFolder:
+						typeof body.transferFolder === "string"
+							? body.transferFolder
+							: undefined,
+				});
+				json(response, 200, ok({ configured: true, clientId: saved.clientId }));
+				return;
+			}
+
+			if (
+				request.method === "POST" &&
+				url.pathname === "/api/aliyundrive/oauth/start"
+			) {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				try {
+					const start = aliyunAuth.startOAuth(
+						typeof body.clientId === "string"
+							? { clientId: body.clientId }
+							: {},
+					);
+					json(response, 200, ok(start));
+				} catch (error) {
+					json(
+						response,
+						400,
+						fail(
+							"BAD_REQUEST",
+							error instanceof Error ? error.message : String(error),
+						),
+					);
+				}
+				return;
+			}
+
+			if (
+				request.method === "POST" &&
+				url.pathname === "/api/aliyundrive/oauth/complete"
+			) {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (typeof body.state !== "string" || typeof body.code !== "string") {
+					json(
+						response,
+						400,
+						fail("BAD_REQUEST", "state and code are required"),
+					);
+					return;
+				}
+				try {
+					const status = await aliyunAuth.completeOAuth({
+						state: body.state,
+						code: body.code,
+					});
+					json(response, 200, ok(status));
+				} catch (err) {
+					json(
+						response,
+						502,
+						fail(
+							"OAUTH_COMPLETE_FAILED",
+							err instanceof Error ? err.message : "oauth complete failed",
+						),
+					);
+				}
+				return;
+			}
+
+			if (
+				request.method === "POST" &&
+				url.pathname === "/api/aliyundrive/oauth/revoke"
+			) {
+				aliyunAuth.revoke();
+				json(response, 200, ok(aliyunAuth.getStatus()));
+				return;
+			}
+
+			if (
+				request.method === "POST" &&
+				url.pathname === "/api/aliyundrive/test"
+			) {
+				const result = await aliyunAuth.testAuthorization();
+				json(response, 200, ok(result));
+				return;
+			}
+
+			const transferIdMatch = url.pathname.match(/^\/api\/transfers\/([^/]+)$/);
+			const transferActionMatch = url.pathname.match(
+				/^\/api\/transfers\/([^/]+)\/([a-z-]+)$/,
+			);
+
+			if (
+				request.method === "POST" &&
+				(url.pathname === "/api/transfers/uploads" ||
+					url.pathname === "/api/transfers/exports")
+			) {
+				const body = (await readBody(request)) as Record<string, unknown>;
+				if (
+					typeof body.machineId !== "string" ||
+					typeof body.filename !== "string" ||
+					typeof body.size !== "number" ||
+					typeof body.path !== "string"
+				) {
+					json(
+						response,
+						400,
+						fail("BAD_REQUEST", "machineId, path, filename, size required"),
+					);
+					return;
+				}
+				try {
+					const plan =
+						url.pathname === "/api/transfers/exports"
+							? await transferService.createExportUpload({
+									machineId: body.machineId,
+									rootId:
+										typeof body.rootId === "string" ? body.rootId : undefined,
+									path: body.path,
+									filename: body.filename,
+									size: body.size,
+								})
+							: await transferService.createImportUpload({
+									machineId: body.machineId,
+									rootId:
+										typeof body.rootId === "string" ? body.rootId : undefined,
+									path: body.path,
+									filename: body.filename,
+									size: body.size,
+									transfer:
+										body.transfer === "aliyundrive" ? "aliyundrive" : "auto",
+								});
+					json(response, 201, ok(plan));
+				} catch (error) {
+					json(
+						response,
+						400,
+						fail(
+							"BAD_REQUEST",
+							error instanceof Error ? error.message : String(error),
+						),
+					);
+				}
+				return;
+			}
+
+			if (request.method === "GET" && transferIdMatch) {
+				const transferId = transferIdMatch[1];
+				const job = transferService.getTransfer(transferId);
+				json(
+					response,
+					job ? 200 : 404,
+					job ? ok(job) : fail("BAD_REQUEST", "Transfer not found"),
+				);
+				return;
+			}
+
+			if (transferActionMatch) {
+				const transferId = transferActionMatch[1];
+				const action = transferActionMatch[2];
+				const body =
+					request.method === "POST"
+						? ((await readBody(request)) as Record<string, unknown>)
+						: {};
+				try {
+					if (action === "upload-plan" && request.method === "GET") {
+						const plan = await transferService.getUploadPlan(transferId);
+						json(response, 200, ok(plan));
+						return;
+					}
+					if (
+						action === "client-export-complete" &&
+						request.method === "POST"
+					) {
+						const job = await transferService.completeClientExport(transferId);
+						json(response, 200, ok(job));
+						return;
+					}
+					if (action === "cli-progress" && request.method === "POST") {
+						const job = transferService.recordCliProgress(transferId, {
+							uploadedBytes: Number(body.uploadedBytes ?? 0),
+							totalBytes: Number(body.totalBytes ?? 0),
+							currentPart:
+								body.currentPart === undefined
+									? undefined
+									: Number(body.currentPart),
+						});
+						json(response, 200, ok(job));
+						return;
+					}
+					if (
+						(action === "cli-upload-complete" ||
+							action === "web-upload-complete") &&
+						request.method === "POST"
+					) {
+						const job = await transferService.completeCliUpload(transferId);
+						json(response, 200, ok(job));
+						return;
+					}
+					if (action === "refresh-download-url" && request.method === "POST") {
+						const urls = await transferService.refreshDownloadUrl(transferId);
+						json(response, 200, ok(urls));
+						return;
+					}
+					if (action === "client-progress" && request.method === "POST") {
+						transferService.recordClientProgress(transferId, body);
+						json(response, 200, ok(transferService.getTransfer(transferId)));
+						return;
+					}
+					if (action === "client-complete" && request.method === "POST") {
+						const job = transferService.completeClientDownload(transferId);
+						json(response, 200, ok(job));
+						return;
+					}
+					if (action === "client-failed" && request.method === "POST") {
+						const job = transferService.failTransfer(transferId, {
+							errorCode: String(body.errorCode ?? "CLIENT_FAILED"),
+							errorMessage: String(body.errorMessage ?? "Client failed"),
+						});
+						json(response, 200, ok(job));
+						return;
+					}
+				} catch (error) {
+					json(
+						response,
+						400,
+						fail(
+							"BAD_REQUEST",
+							error instanceof Error ? error.message : String(error),
+						),
+					);
+					return;
+				}
+			}
+
 			json(response, 404, fail("BAD_REQUEST", "Route not found"));
 		},
 	);
 
-	const wss = new WebSocketServer({ noServer: true });
-	server.on("upgrade", (request, socket, head) => {
-		const url = new URL(request.url ?? "/", "http://127.0.0.1");
-		if (url.pathname !== "/ws/client") {
-			socket.destroy();
-			return;
-		}
-		const bearer = readBearerToken(request.headers.authorization);
-		if (bearer === null || !ownerTokenEquals(options.ownerToken, bearer)) {
-			socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-			socket.destroy();
-			return;
-		}
-		wss.handleUpgrade(request, socket, head, (ws) =>
-			wss.emit("connection", ws, request),
-		);
-	});
-
-	wss.on("connection", (ws) => {
-		let machineId: string | undefined;
-
-		ws.on("message", (raw) => {
-			let message: ClientToGatewayMessage;
-			try {
-				message = JSON.parse(String(raw)) as ClientToGatewayMessage;
-			} catch {
-				return;
-			}
-			if (message.type === "client.hello") {
-				machineId = message.machineId;
-				gatewayState.machines.set(machineId, {
-					id: machineId,
-					name: machineId,
-					status: "online",
-					lastSeenAt: new Date().toISOString(),
-				});
-				gatewayState.clients.set(machineId, ws);
-				ws.send(
-					JSON.stringify({
-						type: "client.accepted",
-						machineId,
-					} satisfies GatewayToClientMessage),
-				);
-				for (const task of gatewayState.tasks.values()) {
-					if (
-						task.machineId === machineId &&
-						task.status === "waiting_client"
-					) {
-						dispatchIfPossible(gatewayState, task);
-					}
-				}
-				return;
-			}
-			if (message.type === "task.event") {
-				appendEvent(gatewayState, message.event);
-				if (message.taskStatus) {
-					setTaskStatus(gatewayState, message.taskId, message.taskStatus);
-				}
-			}
-		});
-
-		ws.on("close", () => {
-			if (!machineId) return;
-			gatewayState.clients.delete(machineId);
-			const machine = gatewayState.machines.get(machineId);
-			if (machine) {
-				gatewayState.machines.set(machineId, {
-					...machine,
-					status: "offline",
-					lastSeenAt: new Date().toISOString(),
-				});
-			}
-		});
+	const wss = attachGatewayWebSocket({
+		server,
+		db,
+		ownerToken: options.ownerToken,
+		gatewayState,
+		dispatchTask: (task) => dispatchIfPossible(db, gatewayState, task),
 	});
 
 	await new Promise<void>((resolve) =>

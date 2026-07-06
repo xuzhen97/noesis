@@ -4,16 +4,26 @@ export const protocolVersion = "0.1.0" as const;
 /** Machine 连接状态：在线 / 离线 / 已禁用 */
 export type MachineStatus = "online" | "offline" | "disabled";
 
+/** Client 上报的磁盘/根目录信息 */
+export interface DiskInfo {
+	id: string;
+	label: string;
+	path: string;
+	totalBytes?: number;
+	freeBytes?: number;
+}
+
 /** 注册到 Gateway 的 Machine，代表一个可执行任务的计算节点 */
 export interface Machine {
 	id: string;
 	name: string;
 	status: MachineStatus;
 	lastSeenAt?: string;
+	disks?: DiskInfo[];
 }
 
 /** 当前支持的任务类型 */
-export type TaskType = "command.run";
+export type TaskType = "command.run" | "file.list" | "file.read" | "file.write";
 
 /** Task 生命周期状态 */
 export type TaskStatus =
@@ -79,6 +89,7 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 export interface ClientHelloMessage {
 	type: "client.hello";
 	machineId: string;
+	disks?: DiskInfo[];
 }
 
 /** Client Agent → Gateway：任务事件报告 */
@@ -89,8 +100,48 @@ export interface TaskEventMessage {
 	event: TaskEvent;
 }
 
+/** Client → Gateway：传输进度（导入/导出） */
+export interface ClientTransferProgressMessage {
+	type: "client.transfer.progress";
+	payload: {
+		transferId: string;
+		machineId: string;
+		phase: string;
+		downloadedBytes?: number;
+		uploadedBytes?: number;
+		writtenBytes?: number;
+		totalBytes?: number;
+	};
+}
+
+export interface ClientTransferCompleteMessage {
+	type: "client.transfer.complete";
+	payload: {
+		transferId: string;
+		machineId: string;
+		rootId?: string;
+		path: string;
+		size: number;
+	};
+}
+
+export interface ClientTransferFailedMessage {
+	type: "client.transfer.failed";
+	payload: {
+		transferId: string;
+		machineId: string;
+		errorCode: string;
+		errorMessage: string;
+	};
+}
+
 /** Client Agent 发送给 Gateway 的所有消息类型 */
-export type ClientToGatewayMessage = ClientHelloMessage | TaskEventMessage;
+export type ClientToGatewayMessage =
+	| ClientHelloMessage
+	| TaskEventMessage
+	| ClientTransferProgressMessage
+	| ClientTransferCompleteMessage
+	| ClientTransferFailedMessage;
 
 /** Gateway → Client Agent：派发任务 */
 export interface TaskDispatchMessage {
@@ -104,10 +155,26 @@ export interface ClientAcceptedMessage {
 	machineId: string;
 }
 
+/** Gateway → Client：存储中转下载（盘 → 机器） */
+export interface TransferDownloadStartMessage {
+	type: "transfer.download.start";
+	requestId?: string;
+	payload: { transferId: string; machineId: string };
+}
+
+/** Gateway → Client：存储中转上传（机器 → 盘） */
+export interface TransferUploadStartMessage {
+	type: "transfer.upload.start";
+	requestId?: string;
+	payload: { transferId: string; machineId: string };
+}
+
 /** Gateway 发送给 Client Agent 的所有消息类型 */
 export type GatewayToClientMessage =
 	| TaskDispatchMessage
-	| ClientAcceptedMessage;
+	| ClientAcceptedMessage
+	| TransferDownloadStartMessage
+	| TransferUploadStartMessage;
 
 /** /api/health 健康检查响应 */
 export interface GatewayHealth {

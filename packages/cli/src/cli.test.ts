@@ -14,7 +14,7 @@ describe("Noesis CLI shell", () => {
 		await expect(runCli(["--help"])).resolves.toEqual({
 			exitCode: 0,
 			stdout:
-				"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n",
+				"Noesis CLI\n\nCommands:\n  noesis --help\n  noesis version\n  noesis task run --gateway <url> --machine <id> --json [--owner-token <token>] -- node -e \"console.log('noesis-ok')\"\n  noesis transfer upload --gateway <url> --machine <id> --file <path> [--path <dir>] [--json] [--owner-token <token>]\n  noesis transfer download --gateway <url> --transfer <id> --out <path> [--json] [--owner-token <token>]\n",
 			stderr: "",
 		});
 	});
